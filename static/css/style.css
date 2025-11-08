@@ -44,9 +44,15 @@ body, html {
     display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem;
     background-color: var(--bg-light); border: 1px solid var(--border-color);
     color: var(--text-primary); border-radius: 4px; cursor: pointer;
-    transition: background-color 0.2s ease; font-family: var(--font-ui); text-align: left;
+    transition: background-color 0.2s ease, opacity 0.2s ease; font-family: var(--font-ui); text-align: left;
 }
 .file-actions button:hover { background-color: #4d4d4d; }
+.file-actions button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: var(--bg-light);
+}
+
 #file-tree { color: var(--text-primary); font-size: 0.9rem; padding-left: 0; }
 #file-tree ul { list-style: none; padding-left: 1rem; }
 .tree-item {
