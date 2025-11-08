@@ -1,6 +1,7 @@
 import sqlite3
 import uuid
 import mimetypes
+import base64
 from flask import Flask, render_template, request, jsonify, Response, redirect, url_for
 
 app = Flask(__name__)
@@ -44,8 +45,7 @@ def save():
 
     conn = get_db_connection()
     for file_data in files:
-        # The content is now received as a base64 string for binary safety
-        import base64
+        # The content is received as a base64 string for binary safety
         content_bytes = base64.b64decode(file_data['content_b64'])
         conn.execute('INSERT INTO files (project_id, filepath, content) VALUES (?, ?, ?)',
                      (project_id, file_data['path'], content_bytes))
