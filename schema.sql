@@ -1,7 +1,7 @@
 -- Re-create the table every time to ensure the schema is up-to-date.
 DROP TABLE IF EXISTS files;
 
--- The 'content' column is now a BLOB to store any kind of file data (text, images, etc.)
+-- The 'content' column is a BLOB to store any kind of file data (text, images, etc.)
 CREATE TABLE files (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id TEXT NOT NULL,
