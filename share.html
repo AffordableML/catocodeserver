@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CatoCode - Shared Project</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <iframe id="shared-frame"></iframe>
+
+    <script>
+        const projectId = "{{ project_id }}";
+
+        fetch(`/project/${projectId}`)
+            .then(response => response.json())
+            .then(files => {
+                let htmlContent = '';
+                let cssContent = '';
+                let jsContent = '';
+
+                files.forEach(file => {
+                    if (file.name.endsWith('.html')) {
+                        htmlContent = file.content;
+                    } else if (file.name.endsWith('.css')) {
+                        cssContent += `<style>${file.content}</style>`;
+                    } else if (file.name.endsWith('.js')) {
+                        jsContent += `<script>${file.content}<\/script>`;
+                    }
+                });
+
+                const iframe = document.getElementById('shared-frame');
+                const doc = iframe.contentDocument || iframe.contentWindow.document;
+
+                doc.open();
+                doc.write(htmlContent.replace('</head>', `${cssContent}</head>`).replace('</body>', `${jsContent}</body>`));
+                doc.close();
+            });
+    </script>
+</body>
+</html>
