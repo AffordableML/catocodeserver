@@ -1,0 +1,253 @@
+{% extends "layout.html" %}
+{% block content %}
+<script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/eclipse.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+
+<style>
+    .notebook-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .cell {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+    }
+
+    .cell-input {
+        border-bottom: 1px solid #f1f5f9;
+        padding: 0;
+    }
+
+    .cell-controls {
+        padding: 8px 12px;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .cell-output {
+        padding: 12px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        white-space: pre-wrap;
+        background: #fff;
+        min-height: 0;
+    }
+
+    .cell-output img {
+        max-width: 100%;
+        display: block;
+        margin-top: 10px;
+    }
+
+    .CodeMirror {
+        height: auto;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        padding: 10px;
+    }
+
+    .loading-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.9);
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+
+<div class="loading-overlay" id="loader">
+    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+    <h2 class="text-xl font-bold text-slate-700">Initializing CatoCode Notebooks...</h2>
+    <p class="text-slate-500 mt-2">Loading Python kernel, NumPy, Pandas, Matplotlib</p>
+</div>
+
+<div class="notebook-container">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-extrabold text-slate-800"><i class="fas fa-book-open text-orange-500 mr-2"></i>
+                CatoCode Notebooks</h1>
+            <p class="text-slate-500">Run Python code directly in your browser with full library support.</p>
+        </div>
+        <button onclick="addCell()"
+            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-bold">
+            <i class="fas fa-plus"></i> New Cell
+        </button>
+    </div>
+
+    <div id="cells-container"></div>
+</div>
+
+<script>
+    let pyodide = null;
+    let cellCount = 0;
+
+    async function init() {
+        const loaderText = document.querySelector('#loader p');
+        try {
+            loaderText.textContent = "Loading Python Kernel...";
+            pyodide = await loadPyodide();
+
+            loaderText.textContent = "Loading NumPy...";
+            await pyodide.loadPackage('numpy');
+
+            loaderText.textContent = "Loading Pandas...";
+            await pyodide.loadPackage('pandas');
+
+            loaderText.textContent = "Loading Matplotlib...";
+            await pyodide.loadPackage('matplotlib');
+
+            // Setup Plotting & Utils
+            await pyodide.runPythonAsync(`
+                import matplotlib.pyplot as plt
+                import io, base64
+                
+                # Monkeypatch help to avoid paging
+                import builtins
+                builtins.help = print
+                
+                # Patch show to not clear immediately or block
+                def custom_show():
+                    pass
+                plt.show = custom_show
+                
+                def get_plot_data():
+                    # Check if there are any active figures associated with pyplot
+                    if plt.get_fignums():
+                        buf = io.BytesIO()
+                        plt.savefig(buf, format='png')
+                        buf.seek(0)
+                        img_str = base64.b64encode(buf.read()).decode('utf-8')
+                        plt.clf() # Clear the figure after saving
+                        return img_str
+                    return None
+            `);
+
+            document.getElementById('loader').style.display = 'none';
+
+            // Add initial cells with proper multiline strings
+            addCell(`# Welcome to CatoCode Notebooks!
+import sys
+import datetime
+import random
+
+print(f"Python {sys.version}")
+print(f"Current Time: {datetime.datetime.now()}")
+print(f"Random Luck: {random.randint(1, 100)}")`);
+
+            addCell(`# Matplotlib Demo
+import numpy as np
+import matplotlib.pyplot as plt
+
+x = np.linspace(0, 10, 100)
+y = np.sin(x)
+
+plt.figure(figsize=(10,6))
+plt.plot(x, y, color="purple", linewidth=2)
+plt.title("Wave Function")
+plt.grid(True)
+plt.show()`);
+        } catch (e) {
+            document.querySelector('#loader h2').textContent = "Error Loading Kernel";
+            document.querySelector('#loader p').textContent = e.message;
+            document.querySelector('#loader p').style.color = "red";
+        }
+    }
+
+    function addCell(defaultCode = "") {
+        cellCount++;
+        const id = cellCount;
+        const div = document.createElement('div');
+        div.className = 'cell';
+        div.innerHTML = `
+            <div class="cell-input" id="input-${id}"></div>
+            <div class="cell-controls">
+                <div class="text-xs text-slate-400 font-bold">In [${id}]:</div>
+                <div class="flex gap-2">
+                    <button onclick="runCell(${id})" class="text-green-600 font-bold hover:bg-green-50 px-3 py-1 rounded text-sm"><i class="fas fa-play"></i> Run</button>
+                    <button onclick="clearCell(${id})" class="text-slate-500 hover:bg-slate-100 px-3 py-1 rounded text-sm"><i class="fas fa-eraser"></i> Clear</button>
+                    <button onclick="this.closest('.cell').remove()" class="text-red-400 hover:bg-red-50 px-3 py-1 rounded text-sm"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+            <div class="cell-output" id="output-${id}"></div>
+            <div class="cell-plot" id="plot-${id}" style="padding:0 12px 12px 12px;"></div>
+        `;
+        document.getElementById('cells-container').appendChild(div);
+
+        // Init CodeMirror
+        const cm = CodeMirror(document.getElementById(`input-${id}`), {
+            value: defaultCode,
+            mode: "python",
+            theme: "eclipse",
+            lineNumbers: true,
+            viewportMargin: Infinity
+        });
+        div.dataset.editor = id;
+        div.cm = cm;
+    }
+
+    function clearCell(id) {
+        document.getElementById(`output-${id}`).textContent = '';
+        document.getElementById(`plot-${id}`).innerHTML = '';
+    }
+
+    async function runCell(id) {
+        const cell = document.querySelector(`.cell[data-editor="${id}"]`);
+        const cm = cell.cm;
+        const code = cm.getValue();
+        const outputDiv = document.getElementById(`output-${id}`);
+        const plotDiv = document.getElementById(`plot-${id}`);
+
+        outputDiv.textContent = 'Running...';
+        outputDiv.style.color = '#64748b';
+        // Don't clear plot immediately to allow "appending" or just because run might be computation only
+        // But usually notebooks clear output on new run. Let's clear.
+        plotDiv.innerHTML = '';
+
+        try {
+            // Hijack stdout
+            pyodide.setStdout({ batched: (msg) => { outputDiv.textContent += msg + '\\n'; } });
+            outputDiv.textContent = '';
+            outputDiv.style.color = '#000';
+
+            // Run
+            await pyodide.loadPackagesFromImports(code);
+            let result = await pyodide.runPythonAsync(code);
+
+            if (result !== undefined && result !== null) {
+                outputDiv.textContent += String(result);
+            }
+
+            // Handle plots (Always check for plots after any execution)
+            try {
+                let plotData = await pyodide.runPythonAsync("get_plot_data()");
+                if (plotData) {
+                    plotDiv.innerHTML = `<button onclick="this.parentElement.innerHTML=''" class="absolute top-2 right-2 bg-white rounded-full p-1 shadow hover:bg-gray-100 text-gray-500"><i class="fas fa-times"></i></button><img src="data:image/png;base64,${plotData}" />`;
+                    // Make plot div relative for absolute button
+                    plotDiv.classList.add('relative');
+                }
+            } catch (e) { }
+
+        } catch (e) {
+            outputDiv.textContent = e;
+            outputDiv.style.color = '#ef4444';
+        }
+    }
+
+    init();
+</script>
+{% endblock %}

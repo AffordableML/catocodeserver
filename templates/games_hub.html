@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+{% block title %}CatoCode Arcade{% endblock %}
+
+{% block content %}
+<div class="bg-gray-50 min-h-full py-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight mb-2">CatoCode <span
+                    class="text-primary">Arcade</span></h1>
+            <p class="text-lg text-gray-500">Play, remix, and share games created by the community.</p>
+        </div>
+
+        <div class="max-w-xl mx-auto mb-10">
+            <form action="{{ url_for('games_hub') }}" method="get" class="relative">
+                <input type="text" name="q" value="{{ query }}" placeholder="Search games..."
+                    class="w-full pl-12 pr-4 py-3 rounded-full border border-gray-300 focus:outline-none focus:border-primary focus:ring-2 focus:ring-blue-100 shadow-sm transition">
+                <i class="fas fa-search absolute left-5 top-3.5 text-gray-400"></i>
+            </form>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {% for p in projects %}
+            <a href="{{ url_for('project_public', project_uid=p.project_uid) }}"
+                class="group block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition transform hover:-translate-y-1 border border-gray-100">
+                <div
+                    class="h-40 bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center relative overflow-hidden">
+                    <i
+                        class="fas fa-gamepad text-6xl text-white/20 transform group-hover:scale-110 transition duration-500"></i>
+                    <div
+                        class="absolute bottom-3 right-3 bg-black/30 backdrop-blur px-2 py-1 rounded text-xs text-white font-medium">
+                        Platformer</div>
+                </div>
+                <div class="p-6">
+                    <h3 class="text-xl font-bold text-gray-900 mb-1 group-hover:text-primary transition">{{ p.name }}
+                    </h3>
+                    <p class="text-sm text-gray-500 mb-4">by @{{ p.username }}</p>
+                    <p class="text-gray-600 text-sm line-clamp-2 mb-4">{{ p.description or 'No description available.'
+                        }}</p>
+                    <div class="flex items-center justify-between text-sm text-gray-400">
+                        <div class="flex items-center gap-4">
+                            <span><i class="fas fa-heart text-red-400 mr-1"></i> {{ p.likes_count }}</span>
+                            <span><i class="fas fa-code-branch text-blue-400 mr-1"></i> {{ p.remix_count }}</span>
+                        </div>
+                        <span class="text-xs">{{ p.created_at.split(' ')[0] }}</span>
+                    </div>
+                </div>
+            </a>
+            {% else %}
+            <div class="col-span-full text-center py-20">
+                <i class="fas fa-ghost text-4xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">No games found. Why not build one?</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>CatoGames Editor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
+    <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+    <style>
+        .game-layout {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            height: calc(100vh - 50px);
+        }
+
+        #blockly-div {
+            height: 100%;
+            width: 100%;
+            background: #1a1a1a;
+        }
+
+        .game-sidebar {
+            border-left: 1px solid #333;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .preview-wrapper {
+            padding: 10px;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            border-bottom: 1px solid #333;
+        }
+
+        canvas {
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            max-width: 100%;
+        }
+
+        .asset-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid #333;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 10px;
+            background: #222;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .asset-grid {
+            flex: 1;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            overflow-y: auto;
+            align-content: flex-start;
+        }
+
+        .asset-item {
+            aspect-ratio: 1;
+            background: #333;
+            border-radius: 4px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .asset-item:hover {
+            border-color: #6366f1;
+        }
+
+        .asset-item img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+
+        .asset-name {
+            position: absolute;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            width: 100%;
+            font-size: 0.7rem;
+            text-align: center;
+            padding: 2px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .console-log {
+            height: 120px;
+            background: #000;
+            border-top: 1px solid #333;
+            padding: 5px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #0f0;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <script>const PROJECT_ID = {{ project.id }}; const SAVED_STATE = {{ project.game_state| tojson if project.game_state else 'null' }};</script>
+
+    <header class="toolbar game-toolbar">
+        <div class="brand"><i class="fas fa-gamepad" style="color:#d946ef"></i> {{ project.name }}</div>
+        <div class="tools">
+            <button id="run-btn" class="btn-primary" style="background:#10b981"><i class="fas fa-play"></i> Run</button>
+            <button id="save-game-btn"><i class="fas fa-save"></i> Save</button>
+            <button id="download-btn"><i class="fas fa-download"></i> Publish HTML</button>
+            <a href="{{ url_for('dashboard') }}" class="btn-text">Exit</a>
+        </div>
+    </header>
+
+    <div class="game-layout">
+        <div id="blockly-div"></div>
+        <div class="game-sidebar">
+            <div class="preview-wrapper">
+                <canvas id="gameCanvas" width="480" height="360"></canvas>
+            </div>
+
+            <div class="asset-panel">
+                <div class="panel-header">
+                    <span>ASSETS</span>
+                    <button class="btn-xs" onclick="document.getElementById('game-upload').click()"><i
+                            class="fas fa-plus"></i> Add</button>
+                    <input type="file" id="game-upload" hidden accept="image/*">
+                </div>
+                <div class="asset-grid" id="asset-list">
+                    <!-- Assets loaded via JS -->
+                </div>
+            </div>
+
+            <div class="console-log" id="gameConsole">
+                <div>> Ready...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 
+       TOOLBOX DEFINITION 
+       Colors set to #000000 or very dark greys as requested. 
+    -->
+    <xml xmlns="https://developers.google.com/blockly/xml" id="toolbox" style="display: none">
+        <category name="Events" colour="#FFD700">
+            <block type="on_start"></block>
+            <block type="on_update"></block>
+        </category>
+        <category name="Motion" colour="#4C97FF">
+            <block type="move_steps"></block>
+            <block type="go_to_xy"></block>
+            <block type="change_x"></block>
+            <block type="change_y"></block>
+            <block type="point_direction"></block>
+            <block type="bounce_edge"></block>
+        </category>
+        <category name="Looks" colour="#9966FF">
+            <block type="create_sprite"></block>
+            <block type="set_size"></block>
+            <block type="show_hide"></block>
+            <block type="set_bg"></block>
+        </category>
+        <category name="Control" colour="#FFAB19">
+            <block type="controls_if"></block>
+            <block type="controls_repeat_ext"></block>
+            <block type="controls_whileUntil"></block>
+        </category>
+        <category name="Sensing" colour="#5CB1D6">
+            <block type="key_pressed"></block>
+            <block type="touching_sprite"></block>
+            <block type="mouse_down"></block>
+            <block type="mouse_x"></block>
+            <block type="mouse_y"></block>
+        </category>
+        <category name="Operators" colour="#59C059">
+            <block type="math_number"></block>
+            <block type="math_arithmetic"></block>
+            <block type="math_random_int"></block>
+            <block type="logic_compare"></block>
+            <block type="logic_operation"></block>
+            <block type="logic_negate"></block>
+            <block type="logic_boolean"></block>
+        </category>
+        <category name="Variables" colour="#FF8C1A" custom="VARIABLE"></category>
+    </xml>
+
+    <script src="{{ url_for('static', filename='js/game_editor.js') }}"></script>
+</body>
+
+</html>

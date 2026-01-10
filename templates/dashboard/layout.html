@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="flex h-[calc(100vh-64px)] w-full bg-white overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-64 border-r border-slate-200 flex flex-col p-4 bg-slate-50 shrink-0 h-full">
+        <nav class="flex-1 space-y-1 overflow-y-auto">
+            <a href="/dashboard"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg transition {% if section=='projects' %}bg-white shadow text-blue-600 font-bold{% else %}text-slate-600 hover:bg-slate-200{% endif %}">
+                <i class="fas fa-folder w-5 text-center"></i> Projects
+            </a>
+            <a href="/dashboard/database"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg transition {% if section=='database' %}bg-white shadow text-blue-600 font-bold{% else %}text-slate-600 hover:bg-slate-200{% endif %}">
+                <i class="fas fa-database w-5 text-center"></i> Database
+            </a>
+            <a href="/dashboard/templates"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg transition {% if section=='templates' %}bg-white shadow text-blue-600 font-bold{% else %}text-slate-600 hover:bg-slate-200{% endif %}">
+                <i class="fas fa-magic w-5 text-center"></i> Templates
+            </a>
+            <a href="/dashboard/plugins"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg transition {% if section=='plugins' %}bg-white shadow text-blue-600 font-bold{% else %}text-slate-600 hover:bg-slate-200{% endif %}">
+                <i class="fas fa-plug w-5 text-center"></i> Plugins
+            </a>
+
+            <div class="h-px bg-slate-200 my-3"></div>
+
+            <a href="/marketplace"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg transition text-slate-600 hover:bg-slate-200">
+                <i class="fas fa-store w-5 text-center"></i> Marketplace
+            </a>
+            <a href="/sdk"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg transition text-slate-600 hover:bg-slate-200">
+                <i class="fas fa-book w-5 text-center"></i> SDK Docs
+            </a>
+        </nav>
+
+        <div class="mt-auto border-t border-slate-200 pt-4">
+            <div class="flex items-center gap-3 mb-4 px-2">
+                <div
+                    class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                    {{ current_user.username[0]|upper }}
+                </div>
+                <div class="font-bold text-sm truncate">{{ current_user.username }}</div>
+            </div>
+            <a href="/logout"
+                class="flex items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg transition text-sm font-bold w-full">
+                <i class="fas fa-sign-out-alt w-5 text-center"></i> Sign Out
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto bg-white p-8">
+        {% block dashboard_content %}{% endblock %}
+    </main>
+</div>
+{% endblock %}

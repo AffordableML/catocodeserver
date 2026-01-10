@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cato2d - {{ project_data.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Tone.js loaded on-demand to prevent AudioContext warning -->
+    <script>
+        tailwind.config = { theme: { extend: { colors: { primary: '#6366f1', secondary: '#475569' } } } }
+    </script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .pixel-grid {
+            display: grid;
+            background-image: conic-gradient(#eee 90deg, #fff 90deg);
+            background-size: 20px 20px;
+            border: 1px solid #ccc;
+        }
+
+        .pixel-cell {
+            cursor: crosshair;
+        }
+
+        .pixel-cell:hover {
+            background-color: rgba(99, 102, 241, 0.2);
+        }
+
+        #canvas-wrapper {
+            background: linear-gradient(to bottom, #bae6fd 0%, #e0f2fe 100%);
+            background-attachment: fixed;
+            background-size: cover;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+        }
+
+        #context-menu {
+            position: absolute;
+            z-index: 1000;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            min-width: 150px;
+            display: none;
+        }
+
+        .ctx-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ctx-item:hover {
+            background-color: #f3f4f6;
+            color: #6366f1;
+        }
+
+        .ctx-divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 4px 0;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 h-screen w-screen flex flex-col overflow-hidden text-sm font-sans text-gray-700">
+    <script>const PROJECT_DATA = {{ project_data| tojson }};</script>
+
+    <header
+        class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 z-30 shadow-sm">
+        <div class="flex items-center gap-4">
+            <a href="{{ url_for('dashboard') }}"
+                class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition"><i
+                    class="fas fa-arrow-left"></i></a>
+            <div>
+                <h1 class="font-bold text-gray-900 leading-tight">{{ project_data.name }}</h1>
+                <p class="text-xs text-purple-600 font-medium tracking-wide">CATO2D</p>
+            </div>
+        </div>
+        <div class="flex gap-3">
+            <button id="save-btn"
+                class="px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 transition font-medium flex items-center gap-2"><i
+                    class="fas fa-save"></i> Save</button>
+            <button id="publish-btn"
+                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition shadow-sm font-medium flex items-center gap-2"><i
+                    class="fas fa-cloud-upload-alt"></i> Publish</button>
+            <a href="{{ url_for('project_public', project_uid=project_data.project_uid) }}" target="_blank"
+                class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-indigo-600 transition shadow-lg shadow-indigo-200 font-medium flex items-center gap-2"><i
+                    class="fas fa-play"></i> Play</a>
+            <a href="{{ url_for('project_admin', project_id=project_data.id) }}" target="_blank"
+                class="px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 transition font-medium flex items-center gap-2">
+                <i class="fas fa-database"></i> DB</a>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        <div class="w-96 bg-white border-r border-gray-200 flex flex-col z-20 shadow-xl shrink-0">
+            <div class="flex border-b border-gray-200 bg-gray-50 overflow-x-auto">
+                <button
+                    class="flex-1 py-3 px-2 font-semibold text-gray-500 border-b-2 border-transparent hover:text-primary transition active-tab"
+                    data-tab="level">Level</button>
+                <button
+                    class="flex-1 py-3 px-2 font-semibold text-gray-500 border-b-2 border-transparent hover:text-primary transition"
+                    data-tab="pixel">Sprites</button>
+                <button
+                    class="flex-1 py-3 px-2 font-semibold text-gray-500 border-b-2 border-transparent hover:text-primary transition"
+                    data-tab="ui">Interface</button>
+                <button
+                    class="flex-1 py-3 px-2 font-semibold text-gray-500 border-b-2 border-transparent hover:text-primary transition"
+                    data-tab="settings">World</button>
+            </div>
+
+            <!-- LEVEL TAB -->
+            <div id="tab-level" class="p-5 overflow-y-auto flex-1 tab-content">
+
+                <div class="mb-6 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="flex justify-between items-center mb-2"><label
+                            class="text-xs font-bold text-gray-500 uppercase">Current Level</label><button
+                            id="add-level-btn" class="text-xs text-primary hover:underline">+ New Level</button></div>
+                    <select id="level-select"
+                        class="w-full p-2 bg-white border border-gray-300 rounded text-sm outline-none focus:border-primary"></select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-500 mb-2">Level Background</label>
+                    <div class="flex gap-2">
+                        <input type="color" id="lvl-bg-color"
+                            class="h-8 w-12 cursor-pointer rounded border border-gray-300 p-0.5 bg-white">
+                        <button onclick="document.getElementById('lvl-bg-img').click()"
+                            class="flex-1 text-xs border rounded hover:bg-gray-50">Upload Image</button>
+                        <input type="file" id="lvl-bg-img" hidden accept="image/*">
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-3">Blocks</h3>
+                    <div class="grid grid-cols-4 gap-3" id="tile-palette">
+                        <div class="aspect-square bg-sky-50 rounded-lg cursor-pointer ring-2 ring-transparent hover:ring-primary transition flex items-center justify-center text-sky-400 border border-dashed border-sky-300"
+                            onclick="selectTile(0)" title="Eraser"><i class="fas fa-eraser"></i></div>
+                        <div class="aspect-square bg-gray-800 rounded-lg cursor-pointer ring-2 ring-transparent hover:ring-primary transition border-2 border-gray-600 flex items-center justify-center overflow-hidden"
+                            onclick="selectTile(1)" title="Ground" id="preview-tile-1"></div>
+                        <div class="aspect-square bg-red-500 rounded-lg cursor-pointer ring-2 ring-transparent hover:ring-primary transition border-2 border-red-700 opacity-90 flex items-center justify-center overflow-hidden"
+                            onclick="selectTile(2)" title="Lava" id="preview-tile-2"></div>
+                        <div class="aspect-square bg-yellow-400 rounded-lg cursor-pointer ring-2 ring-transparent hover:ring-primary transition border-2 border-yellow-600 flex items-center justify-center text-yellow-800 font-bold text-xs"
+                            onclick="selectTile(3)" title="Coin">Coin</div>
+                        <div class="aspect-square bg-green-500 rounded-lg cursor-pointer ring-2 ring-transparent hover:ring-primary transition border-2 border-green-700 flex items-center justify-center text-white font-bold text-xs"
+                            onclick="selectTile(9)" title="Player Start">Start</div>
+                        <div class="aspect-square bg-purple-500 rounded-lg cursor-pointer ring-2 ring-transparent hover:ring-primary transition border-2 border-purple-700 flex items-center justify-center text-white font-bold text-xs"
+                            onclick="selectTile(8)" title="Goal Flag">Goal</div>
+                        <div class="aspect-square bg-emerald-300 rounded-lg cursor-pointer ring-2 ring-transparent hover:ring-primary transition border-2 border-emerald-500 flex items-center justify-center text-emerald-800 font-bold text-xs"
+                            onclick="selectTile(5)" title="Checkpoint">Save</div>
+                        <div class="aspect-square bg-pink-500 rounded-lg cursor-pointer ring-2 ring-transparent hover:ring-primary transition border-2 border-pink-700 flex items-center justify-center text-white font-bold text-xs"
+                            onclick="selectTile(4)" title="Enemy">Enemy</div>
+                        <div class="aspect-square border-2 border-red-500 border-dashed rounded-lg cursor-pointer ring-2 ring-transparent hover:ring-primary transition flex items-center justify-center text-red-500 font-bold text-xs bg-red-50"
+                            onclick="selectTile(99)" title="Trigger (Invisible)">Trig</div>
+                    </div>
+                </div>
+
+                <h3 class="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-3">My Assets</h3>
+                <div class="flex justify-between items-center mb-2">
+                    <button onclick="document.getElementById('import-sprite').click()"
+                        class="w-full text-xs bg-gray-100 px-2 py-2 rounded hover:bg-gray-200 transition font-medium border border-gray-300"><i
+                            class="fas fa-upload mr-1"></i> Upload File</button>
+                    <input type="file" id="import-sprite" hidden accept="image/*,audio/*">
+                </div>
+                <div id="custom-assets-list" class="grid grid-cols-4 gap-3 text-xs text-gray-500"></div>
+            </div>
+
+            <!-- SPRITES TAB -->
+            <div id="tab-pixel" class="p-5 overflow-y-auto flex-1 hidden tab-content flex flex-col">
+                <div
+                    class="bg-indigo-50 border border-indigo-100 p-3 rounded-lg text-xs text-indigo-800 mb-4 overflow-y-auto max-h-40">
+                    <p class="font-bold mb-1 sticky top-0 bg-indigo-50">Magic Filenames:</p>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li><code>player_idle</code></li>
+                        <li><code>block_ground</code></li>
+                        <li><code>block_lava</code></li>
+                        <li><code>coin</code></li>
+                        <li><code>goal</code></li>
+                        <li><code>checkpoint</code></li>
+                        <li><code>enemy</code></li>
+                        <li><code>title_screen</code></li>
+                        <li class="mt-2 text-gray-600 font-semibold">Sounds (Upload .mp3/.wav):</li>
+                        <li><code>win.mp3</code></li>
+                        <li><code>die.mp3</code></li>
+                        <li><code>jump.mp3</code></li>
+                        <li><code>bgm.mp3</code></li>
+                    </ul>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Asset Name</label>
+                    <input type="text" id="pixel-name"
+                        class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none transition"
+                        placeholder="e.g. block_ground">
+                </div>
+                <div class="flex justify-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <div id="pixel-canvas" class="pixel-grid"
+                        style="width: 256px; height: 256px; grid-template-columns: repeat(16, 1fr);"></div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Color</label>
+                    <div class="flex gap-2">
+                        <input type="color" id="pixel-color"
+                            class="h-10 w-14 cursor-pointer rounded border border-gray-300 p-0.5 bg-white"
+                            value="#333333">
+                        <button onclick="setPick('transparent')"
+                            class="flex-1 border border-gray-300 rounded bg-white text-xs hover:bg-gray-50">Eraser</button>
+                    </div>
+                </div>
+                <button id="pixel-save"
+                    class="w-full bg-primary text-white py-2 rounded-lg font-medium hover:bg-indigo-600 transition shadow-lg shadow-indigo-200">Save
+                    Asset</button>
+            </div>
+
+            <!-- UI TAB -->
+            <div id="tab-ui" class="p-5 overflow-y-auto flex-1 hidden tab-content">
+                <h3 class="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-4">Start Screen</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Game Title</label>
+                        <input type="text" id="ui-title" class="w-full border rounded px-2 py-1.5 text-sm"
+                            value="{{ project_data.name }}">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Title Color</label>
+                        <input type="color" id="ui-title-color" class="w-full h-8 cursor-pointer rounded border"
+                            value="#ffffff">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Start Button Color</label>
+                        <input type="color" id="ui-btn-color" class="w-full h-8 cursor-pointer rounded border"
+                            value="#6366f1">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Custom CSS</label>
+                        <textarea id="ui-css" class="w-full border rounded p-2 text-xs font-mono h-24"
+                            placeholder=".title { font-size: 50px; }"></textarea>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="ui-skip">
+                        <label for="ui-skip" class="text-sm text-gray-700">Skip Title Screen (Auto Start)</label>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Background Image</label>
+                        <button onclick="document.getElementById('import-ui-bg').click()"
+                            class="w-full border border-dashed border-gray-300 rounded py-2 text-xs text-gray-500 hover:bg-gray-50">Upload
+                            Title BG</button>
+                        <input type="file" id="import-ui-bg" hidden accept="image/*">
+                        <p class="text-[10px] text-gray-400 mt-1">Name asset 'title_screen'</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SETTINGS TAB -->
+            <div id="tab-settings" class="p-5 overflow-y-auto flex-1 hidden tab-content">
+                <div class="space-y-6">
+                    <div>
+                        <div class="flex justify-between mb-1"><label
+                                class="text-xs font-bold text-gray-500">Gravity</label><span id="val-grav"
+                                class="text-xs text-primary font-mono">0.5</span></div><input type="range"
+                            id="conf-gravity" min="0.1" max="1.5" step="0.1" class="w-full accent-primary">
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1"><label class="text-xs font-bold text-gray-500">Jump
+                                Force</label><span id="val-jump" class="text-xs text-primary font-mono">12</span></div>
+                        <input type="range" id="conf-jump" min="5" max="25" step="1" class="w-full accent-primary">
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1"><label
+                                class="text-xs font-bold text-gray-500">Speed</label><span id="val-speed"
+                                class="text-xs text-primary font-mono">4</span></div><input type="range" id="conf-speed"
+                            min="1" max="10" step="0.5" class="w-full accent-primary">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 bg-gray-100 relative overflow-auto flex items-start justify-start p-10" id="canvas-wrapper">
+            <div class="relative shadow-2xl rounded-sm bg-white border border-gray-300">
+                <canvas id="level-canvas" width="3200" height="704" class="bg-transparent cursor-crosshair"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu for Triggers/Custom Textures -->
+    <div id="context-menu">
+        <div class="ctx-item" id="ctx-texture"><i class="fas fa-image"></i> Set Custom Texture</div>
+        <div class="ctx-item" id="ctx-trigger"><i class="fas fa-bolt"></i> Edit Trigger Events</div>
+        <div class="ctx-divider"></div>
+        <div class="ctx-item text-red-500" id="ctx-clear"><i class="fas fa-trash"></i> Clear Block</div>
+    </div>
+
+    <!-- Publish Modal -->
+    <div id="publish-modal" class="fixed inset-0 bg-black/60 hidden place-items-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <h3 class="text-lg font-bold mb-4">Publish Project</h3>
+            <div class="mb-4"><label class="block text-xs font-bold text-gray-500 mb-1">Description</label><textarea
+                    id="pub-desc" class="w-full border rounded p-2 text-sm h-24 resize-none"></textarea></div>
+            <div class="mb-4"><label class="block text-xs font-bold text-gray-500 mb-1">Visibility</label><select
+                    id="pub-vis" class="w-full p-2 border rounded">
+                    <option value="public">Public (Main Page)</option>
+                    <option value="unlisted">Unlisted (Link Only)</option>
+                    <option value="private">Private</option>
+                </select></div>
+            <div class="flex justify-end gap-3"><button
+                    onclick="document.getElementById('publish-modal').classList.add('hidden')"
+                    class="px-4 py-2 text-gray-600">Cancel</button><button id="confirm-publish"
+                    class="px-4 py-2 bg-green-600 text-white rounded">Publish</button></div>
+        </div>
+    </div>
+
+    <!-- Trigger Editor Modal -->
+    <div id="trigger-modal" class="fixed inset-0 bg-black/60 hidden place-items-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-[600px] h-[500px] flex flex-col">
+            <h3 class="text-lg font-bold mb-4 flex justify-between">Event Editor <button
+                    onclick="closeTriggerModal()"><i class="fas fa-times"></i></button></h3>
+            <div id="event-list" class="flex-1 overflow-y-auto border rounded bg-gray-50 p-2 space-y-2 mb-4"></div>
+            <div class="flex gap-2">
+                <select id="event-type" class="flex-1 p-2 border rounded text-sm">
+                    <option value="wait">Wait (Seconds)</option>
+                    <option value="sound">Play Sound</option>
+                    <option value="input">Simulate Input</option>
+                    <option value="stop_input">Stop Input</option>
+                    <option value="set_block">Set Block ID (x,y,id)</option>
+                    <option value="spawn_enemy">Spawn Enemy (x,y)</option>
+                    <option value="win">Win Level</option>
+                </select>
+                <input type="text" id="event-val" class="flex-1 p-2 border rounded text-sm"
+                    placeholder="Value (e.g., 2.0, jump, coin.mp3)">
+                <button onclick="addEvent()" class="bg-primary text-white px-4 rounded">Add</button>
+            </div>
+            <div class="mt-4 flex justify-end"><button onclick="saveTriggerData()"
+                    class="bg-green-600 text-white px-6 py-2 rounded">Save Events</button></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/game_builder.js') }}"></script>
+</body>
+
+</html>

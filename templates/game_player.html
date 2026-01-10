@@ -1,0 +1,573 @@
+{% extends "layout.html" %}
+{% block title %}Play {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="bg-white min-h-full py-10 px-4">
+    <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+        <div class="lg:col-span-3">
+            <div class="relative bg-gray-900 rounded-xl shadow-lg border border-gray-200 overflow-hidden group aspect-[4/3]"
+                id="game-container">
+                <canvas id="gameCanvas" width="800" height="600"
+                    class="w-full h-full object-contain block hidden"></canvas>
+
+                <!-- Title Screen -->
+                <div id="title-screen"
+                    class="absolute inset-0 flex flex-col items-center justify-center bg-black z-20 bg-cover bg-center">
+                    <h1 class="text-6xl font-extrabold mb-6 tracking-tight drop-shadow-lg" id="game-title"
+                        style="color: white">{{ project.name }}</h1>
+                    <button id="start-btn" onclick="startGame()"
+                        class="px-10 py-4 text-xl rounded-full font-bold transition transform hover:scale-105 shadow-2xl bg-indigo-600 text-white">
+                        PLAY GAME
+                    </button>
+                </div>
+
+                <!-- HUD -->
+                <div id="game-ui" class="hidden absolute top-4 left-4 flex gap-2">
+                    <div
+                        class="bg-white/90 backdrop-blur text-yellow-600 font-bold px-4 py-1 rounded-full flex items-center gap-2 border border-gray-200 shadow-sm">
+                        <i class="fas fa-coins"></i> <span id="coin-counter">0</span>
+                    </div>
+                    <div
+                        class="bg-white/90 backdrop-blur text-gray-600 font-bold px-4 py-1 rounded-full flex items-center gap-2 border border-gray-200 shadow-sm">
+                        Lv <span id="level-display">1</span>
+                    </div>
+                </div>
+
+                <button onclick="toggleFullscreen()"
+                    class="absolute bottom-4 right-4 bg-white/80 text-gray-700 p-2 rounded hover:bg-white transition opacity-0 group-hover:opacity-100 shadow z-20"><i
+                        class="fas fa-expand"></i></button>
+            </div>
+
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex gap-4">
+                    <button id="like-btn"
+                        class="px-5 py-2.5 bg-gray-100 rounded-lg hover:bg-red-50 text-gray-700 font-bold transition flex items-center gap-2 border border-gray-200 {% if is_liked %}text-red-500 bg-red-50 border-red-200{% endif %}"
+                        onclick="toggleLike()">
+                        <i class="fas fa-heart"></i> <span id="like-count">{{ project.likes_count }}</span>
+                    </button>
+                    <button
+                        class="px-5 py-2.5 bg-gray-100 rounded-lg hover:bg-gray-200 text-gray-700 font-bold transition border border-gray-200"
+                        onclick="restart()">
+                        <i class="fas fa-redo mr-2"></i> Restart
+                    </button>
+                </div>
+                <div class="flex gap-3">
+                    <a href="{{ url_for('export_game', project_uid=project.project_uid) }}"
+                        class="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition text-sm font-medium"><i
+                            class="fas fa-download mr-1"></i> HTML</a>
+                    <a href="{{ url_for('project_public', project_uid=project.project_uid) }}?remix=true"
+                        class="text-primary hover:text-blue-700 font-semibold flex items-center gap-1">
+                        <i class="fas fa-code-branch"></i> Remix Project
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gray-50 p-6 rounded-xl border border-gray-200 h-fit">
+            <h1 class="text-2xl font-extrabold text-gray-900 mb-1">{{ project.name }}</h1>
+            <p class="text-sm text-gray-500 mb-6">by <span class="text-primary font-medium">@{{ project.username
+                    }}</span></p>
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Description</h3>
+            <div class="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap mb-6">{{ project.description or 'No
+                description provided.' }}</div>
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Controls</h3>
+            <div class="flex gap-2 mb-2"><kbd
+                    class="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">←</kbd><kbd
+                    class="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">→</kbd><span
+                    class="text-sm text-gray-600">Move</span></div>
+            <div class="flex gap-2"><kbd
+                    class="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm w-16 text-center">SPACE</kbd><span
+                    class="text-sm text-gray-600">Jump</span></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+<script>
+    const projectId = {{ project.id }};
+    const projectUid = "{{ project.project_uid }}";
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    // State
+    let levels = {};
+    let currentLevelIndex = 0;
+    let levelOrder = [];
+    let levelData = [];
+    let config = {};
+    let assets = {};
+    let textures = {};
+    let sounds = {};
+    let enemies = [];
+
+    const TILE_SIZE = 32;
+    let player = { x: 50, y: 50, vx: 0, vy: 0, w: 24, h: 24, grounded: false, dead: false };
+    let camera = { x: 0, y: 0 };
+    let spawnPoint = { x: 50, y: 50 };
+    let keys = {};
+    let coinsCollected = 0;
+    let gameRunning = false;
+    let synth = null;
+    let loadingLevel = false;
+
+    // Trigger System State
+    let triggerCooldowns = {};
+
+    async function initGame() {
+        const res = await fetch(`/api/project/${projectId}/files`);
+        const files = await res.json();
+
+        // Load Config
+        const cfg = files.find(f => f.path === 'game_config.json');
+        config = cfg ? JSON.parse(cfg.content) : { gravity: 0.5, speed: 4, jumpPower: 12, levels: ['level1.json'] };
+        levelOrder = config.levels || ['level1.json'];
+
+        // Apply UI Config
+        if (config.ui) {
+            if (config.ui.title) document.getElementById('game-title').innerText = config.ui.title;
+            if (config.ui.titleColor) document.getElementById('game-title').style.color = config.ui.titleColor;
+            if (config.ui.btnColor) document.getElementById('start-btn').style.backgroundColor = config.ui.btnColor;
+
+            // Custom CSS Injection
+            if (config.ui.css) {
+                const style = document.createElement('style');
+                style.innerHTML = config.ui.css;
+                document.head.appendChild(style);
+            }
+
+            // Auto Skip
+            if (config.ui.skipTitle) {
+                startGame();
+            }
+        }
+
+        // Load Levels & Assets
+        const loadPromises = files.map(f => {
+            return new Promise((resolve) => {
+                // Level JSON
+                if (f.path.match(/^level\d+\.json$/)) {
+                    levels[f.path] = JSON.parse(f.content);
+                    resolve();
+                }
+                // Images
+                else if (f.path.endsWith('.png') || f.path.endsWith('.jpg') || f.path.endsWith('.jpeg')) {
+                    const img = new Image();
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                    img.src = `/view/${projectUid}/${f.path}`;
+                    assets[f.path] = img;
+                    const name = f.path.split('.')[0];
+                    textures[name] = img;
+
+                    if (name === 'title_screen') {
+                        document.getElementById('title-screen').style.backgroundImage = `url(${img.src})`;
+                    }
+                    if (name === 'background') {
+                        canvas.style.backgroundImage = `url(${img.src})`;
+                        canvas.style.backgroundSize = 'cover';
+                    }
+                }
+                // Audio
+                else if (f.path.endsWith('.mp3') || f.path.endsWith('.wav')) {
+                    const aud = new Audio(`/view/${projectUid}/${f.path}`);
+                    aud.oncanplaythrough = resolve;
+                    aud.onerror = resolve; // Don't block
+                    sounds[f.path] = aud;
+                } else {
+                    resolve();
+                }
+            });
+        });
+
+        await Promise.all(loadPromises);
+
+        // Background Music (if uploaded as bgm.mp3)
+        if (sounds['bgm.mp3']) {
+            sounds['bgm.mp3'].loop = true;
+            sounds['bgm.mp3'].volume = 0.5;
+        }
+    }
+
+    function loadLevel(index) {
+        if (loadingLevel) return;
+        loadingLevel = true;
+
+        if (levelOrder.length > 0 && index >= levelOrder.length) {
+            // Win condition logic
+
+            if (sounds['win.mp3']) sounds['win.mp3'].play();
+            else alert("You beat the game!");
+
+            // Reset to title
+            document.getElementById('title-screen').style.display = 'flex';
+            document.getElementById('gameCanvas').classList.add('hidden');
+            document.getElementById('game-ui').classList.add('hidden');
+            gameRunning = false;
+            loadingLevel = false;
+            currentLevelIndex = 0;
+            return;
+        }
+
+        currentLevelIndex = index;
+        const lvlName = levelOrder[index];
+        levelData = JSON.parse(JSON.stringify(levels[lvlName]));
+        document.getElementById('level-display').innerText = index + 1;
+
+        // Reset trigger cooldowns for new level
+        triggerCooldowns = {};
+
+        // Reset background per level if specified in config (metadata feature)
+        // For now global background remains unless overridden
+
+        findSpawnAndEnemies();
+        resetPlayer();
+
+        setTimeout(() => { loadingLevel = false; }, 100);
+    }
+
+    function startGame() {
+        document.getElementById('title-screen').style.display = 'none';
+        document.getElementById('gameCanvas').classList.remove('hidden');
+        document.getElementById('game-ui').classList.remove('hidden');
+
+        if (!synth && typeof Tone !== 'undefined') {
+            Tone.start();
+            synth = new Tone.PolySynth(Tone.Synth).toDestination();
+        }
+
+        if (sounds['bgm.mp3']) sounds['bgm.mp3'].play().catch(e => console.log("Audio autoplay blocked"));
+
+        loadLevel(0);
+        gameRunning = true;
+        requestAnimationFrame(loop);
+    }
+
+    function findSpawnAndEnemies() {
+        enemies = [];
+        spawnPoint = { x: 100, y: 100 };
+        if (!levelData || !levelData.length) return;
+
+        for (let r = 0; r < levelData.length; r++) {
+            for (let c = 0; c < levelData[0].length; c++) {
+                const tile = levelData[r][c];
+                if (tile === 9) {
+                    spawnPoint = { x: c * TILE_SIZE, y: r * TILE_SIZE };
+                }
+                if (tile === 4) {
+                    enemies.push({ x: c * TILE_SIZE, y: r * TILE_SIZE, vx: 1, type: 'slime' });
+                    levelData[r][c] = 0;
+                }
+                // Process metadata spawning (e.g. from trigger editor set_block)
+                // Not strictly needed here as draw loop handles metadata textures, but logic is good.
+            }
+        }
+    }
+
+    function resetPlayer() {
+        player.x = spawnPoint.x;
+        player.y = spawnPoint.y;
+        player.vx = 0;
+        player.vy = 0;
+        player.dead = false;
+        player.grounded = false;
+    }
+
+    function restart() {
+        loadLevel(currentLevelIndex);
+    }
+
+    // --- EVENT SYSTEM EXECUTOR ---
+    async function executeEvents(events) {
+        console.log("Executing events:", events);
+        for (let ev of events) {
+            if (ev.type === 'wait') {
+                await new Promise(r => setTimeout(r, parseFloat(ev.value) * 1000));
+            }
+            else if (ev.type === 'sound') {
+                const s = sounds[ev.value];
+                if (s) { s.currentTime = 0; s.play(); }
+                else playSound('coin'); // fallback
+            }
+            else if (ev.type === 'input') {
+                // Simulate key press
+                if (ev.value === 'right') keys['ArrowRight'] = true;
+                if (ev.value === 'left') keys['ArrowLeft'] = true;
+                if (ev.value === 'jump') { player.vy = -config.jumpPower; player.grounded = false; }
+            }
+            else if (ev.type === 'stop_input') {
+                keys['ArrowRight'] = false; keys['ArrowLeft'] = false;
+            }
+            else if (ev.type === 'win') {
+                if (sounds['win.mp3']) await sounds['win.mp3'].play();
+                loadLevel(currentLevelIndex + 1);
+                return; // Stop processing further events
+            }
+            else if (ev.type === 'spawn_enemy') {
+                const [x, y] = ev.value.split(',').map(Number);
+                enemies.push({ x: x * TILE_SIZE, y: y * TILE_SIZE, vx: 1, type: 'slime' });
+            }
+        }
+    }
+
+    function update() {
+        if (player.dead) return;
+        if (loadingLevel) return;
+
+        // Input
+        if (keys['ArrowRight']) player.vx = config.speed;
+        else if (keys['ArrowLeft']) player.vx = -config.speed;
+        else player.vx = 0;
+
+        if (keys['Space'] && player.grounded) {
+            player.vy = -config.jumpPower;
+            player.grounded = false;
+            playSound('jump');
+        }
+
+        player.vy += config.gravity;
+
+        // Physics
+        const steps = 4; const sx = player.vx / steps; const sy = player.vy / steps;
+        for (let i = 0; i < steps; i++) {
+            player.x += sx; checkCollision('x');
+            player.y += sy; player.grounded = false; checkCollision('y');
+        }
+
+        // Enemies
+        enemies.forEach(e => {
+            e.x += e.vx;
+            const r = Math.floor(e.y / TILE_SIZE);
+            const c = Math.floor((e.x + (e.vx > 0 ? TILE_SIZE : 0)) / TILE_SIZE);
+
+            if (levelData[r] && levelData[r][c] === 1) e.vx *= -1;
+
+            if (
+                player.x < e.x + TILE_SIZE - 6 &&
+                player.x + player.w > e.x + 6 &&
+                player.y < e.y + TILE_SIZE - 6 &&
+                player.y + player.h > e.y + 6
+            ) {
+                player.dead = true;
+                playSound('dead');
+            }
+        });
+
+        // Camera
+        const worldWidth = levelData[0].length * TILE_SIZE;
+        camera.x = player.x - canvas.width / 2;
+        if (camera.x < 0) camera.x = 0;
+        if (camera.x > worldWidth - canvas.width) camera.x = worldWidth - canvas.width;
+
+        if (player.y > canvas.height + 200) { player.dead = true; playSound('dead'); }
+    }
+
+    function checkCollision(axis) {
+        const startCol = Math.floor(player.x / TILE_SIZE);
+        const endCol = Math.floor((player.x + player.w - 0.01) / TILE_SIZE);
+        const startRow = Math.floor(player.y / TILE_SIZE);
+        const endRow = Math.floor((player.y + player.h - 0.01) / TILE_SIZE);
+        const currentLvlName = levelOrder[currentLevelIndex];
+
+        for (let r = startRow; r <= endRow; r++) {
+            for (let c = startCol; c <= endCol; c++) {
+                if (!levelData[r] || levelData[r][c] === undefined) continue;
+
+                const tile = levelData[r][c];
+
+                // TRIGGER SYSTEM (Tile 99)
+                if (tile === 99) {
+                    const key = `${currentLvlName}_${r}_${c}`;
+                    // Only trigger once per level load (or implement cooldown)
+                    if (!triggerCooldowns[key]) {
+                        triggerCooldowns[key] = true;
+                        // Find metadata from config
+                        const meta = config.tileMetadata ? config.tileMetadata[key] : null;
+                        if (meta && meta.events) {
+                            executeEvents(meta.events);
+                        }
+                    }
+                }
+
+                // Solid Block
+                if (tile === 1) {
+                    if (axis === 'x') {
+                        if (player.vx > 0) player.x = c * TILE_SIZE - player.w - 0.01;
+                        else if (player.vx < 0) player.x = (c + 1) * TILE_SIZE + 0.01;
+                        player.vx = 0;
+                    } else {
+                        if (player.vy > 0) {
+                            player.y = r * TILE_SIZE - player.h - 0.01;
+                            player.grounded = true;
+                            player.vy = 0;
+                        } else if (player.vy < 0) {
+                            player.y = (r + 1) * TILE_SIZE + 0.01;
+                            player.vy = 0;
+                        }
+                    }
+                }
+                else if (tile === 2) {
+                    player.dead = true;
+                    playSound('dead');
+                }
+                else if (tile === 5) {
+                    spawnPoint = { x: c * TILE_SIZE, y: r * TILE_SIZE };
+                }
+                else if (tile === 3) {
+                    levelData[r][c] = 0;
+                    coinsCollected++;
+                    document.getElementById('coin-counter').innerText = coinsCollected;
+                    playSound('coin');
+                }
+                else if (tile === 8) {
+                    // Dont play default coin sound if custom win sound exists
+                    if (!sounds['win.mp3']) playSound('coin');
+                    if (sounds['win.mp3']) sounds['win.mp3'].play();
+                    loadLevel(currentLevelIndex + 1);
+                    return;
+                }
+            }
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Background override via metadata?
+        // For simplicity, background.png is global unless we add level-specific override logic here
+
+        ctx.save();
+        ctx.translate(-Math.floor(camera.x), 0);
+
+        const startC = Math.floor(camera.x / TILE_SIZE);
+        const endC = startC + (canvas.width / TILE_SIZE) + 2;
+
+        for (let r = 0; r < levelData.length; r++) {
+            for (let c = startC; c <= endC; c++) {
+                const t = levelData[r][c];
+                if (!t) continue;
+                const x = c * TILE_SIZE;
+                const y = r * TILE_SIZE;
+
+                // Check for Texture Override from Metadata
+                const metaKey = `${levelOrder[currentLevelIndex]}_${r}_${c}`;
+                const meta = config.tileMetadata ? config.tileMetadata[metaKey] : null;
+
+                let drawn = false;
+                if (meta && meta.texture && textures[meta.texture]) {
+                    ctx.drawImage(textures[meta.texture], x, y, TILE_SIZE, TILE_SIZE);
+                    drawn = true;
+                }
+
+                if (!drawn) {
+                    if (t === 1) {
+                        if (textures.block_ground) ctx.drawImage(textures.block_ground, x, y, TILE_SIZE, TILE_SIZE);
+                        else { ctx.fillStyle = '#334155'; ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE); }
+                    }
+                    if (t === 2) {
+                        if (textures.block_lava) ctx.drawImage(textures.block_lava, x, y, TILE_SIZE, TILE_SIZE);
+                        else { ctx.fillStyle = '#ef4444'; ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE); }
+                    }
+                    if (t === 3) {
+                        if (textures.coin) ctx.drawImage(textures.coin, x, y, TILE_SIZE, TILE_SIZE);
+                        else { ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(x + 16, y + 16, 8, 0, 6.28); ctx.fill(); }
+                    }
+                    if (t === 5) {
+                        if (textures.checkpoint) ctx.drawImage(textures.checkpoint, x, y, TILE_SIZE, TILE_SIZE);
+                        else { ctx.fillStyle = '#6ee7b7'; ctx.fillRect(x + 10, y + 10, 12, 22); }
+                    }
+                    if (t === 8) {
+                        if (textures.goal) ctx.drawImage(textures.goal, x, y, TILE_SIZE, TILE_SIZE);
+                        else { ctx.fillStyle = '#a855f7'; ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE); }
+                    }
+                    // Trigger Visual (Invisible in game usually, but helpful to see in debug?)
+                    // if(t===99) { ctx.strokeStyle='rgba(255,0,0,0.5)'; ctx.strokeRect(x,y,TILE_SIZE,TILE_SIZE); }
+                }
+            }
+        }
+
+        enemies.forEach(e => {
+            if (textures.enemy) ctx.drawImage(textures.enemy, e.x, e.y, TILE_SIZE, TILE_SIZE);
+            else { ctx.fillStyle = 'pink'; ctx.fillRect(e.x, e.y, TILE_SIZE, TILE_SIZE); }
+        });
+
+        if (textures.player_idle) {
+            ctx.drawImage(textures.player_idle, Math.floor(player.x), Math.floor(player.y), player.w, player.h);
+        } else {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(Math.floor(player.x), Math.floor(player.y), player.w, player.h);
+        }
+
+        if (player.dead) {
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
+            ctx.fillRect(Math.floor(camera.x), 0, canvas.width, canvas.height);
+
+            // High quality Game Over text
+            ctx.save();
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 60px "Inter", sans-serif';
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+            ctx.fillText("GAME OVER", Math.floor(camera.x) + 400, 260);
+
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            ctx.font = '24px "Inter", sans-serif';
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText("Click Restart to try again", Math.floor(camera.x) + 400, 320);
+            ctx.textAlign = "start";
+            ctx.restore();
+        }
+        ctx.restore();
+    }
+
+    function playSound(type) {
+        // Custom Sounds
+        if (type === 'jump' && sounds['jump.mp3']) { sounds['jump.mp3'].currentTime = 0; sounds['jump.mp3'].play(); return; }
+        if (type === 'coin' && sounds['coin.mp3']) { sounds['coin.mp3'].currentTime = 0; sounds['coin.mp3'].play(); return; }
+        if (type === 'dead' && sounds['die.mp3']) { sounds['die.mp3'].currentTime = 0; sounds['die.mp3'].play(); return; }
+
+        // Fallback Synth
+        if (!synth) return;
+        if (type === 'coin') synth.triggerAttackRelease("C5", "8n");
+        if (type === 'jump') synth.triggerAttackRelease("A3", "16n");
+        if (type === 'dead') synth.triggerAttackRelease("C2", "4n");
+    }
+
+    function loop() {
+        if (gameRunning) {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+    }
+
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
+
+    async function toggleLike() {
+        const res = await fetch(`/project/${projectUid}/like`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('like-count').innerText = data.new_count;
+            const btn = document.getElementById('like-btn');
+            btn.classList.toggle('text-red-500', data.liked);
+            btn.classList.toggle('bg-red-50', data.liked);
+        }
+    }
+
+    function toggleFullscreen() {
+        const elem = document.getElementById('game-container');
+        if (!document.fullscreenElement) elem.requestFullscreen(); else document.exitFullscreen();
+    }
+
+    initGame();
+</script>
+{% endblock %}

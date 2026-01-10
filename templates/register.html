@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="flex items-center justify-center min-h-[80vh]">
+    <div class="bg-white p-10 rounded-2xl shadow-xl border w-full max-w-md">
+        <h1 class="text-3xl font-black mb-2">Join CatoCode</h1>
+        <p class="text-slate-500 mb-8">Get 10MB of storage for your apps.</p>
+        <form method="POST" class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Username</label>
+                <input type="text" name="username"
+                    class="w-full p-3 bg-slate-50 border rounded-xl outline-none focus:border-blue-600 transition"
+                    required>
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Password</label>
+                <input type="password" name="password"
+                    class="w-full p-3 bg-slate-50 border rounded-xl outline-none focus:border-blue-600 transition"
+                    required>
+            </div>
+            <button
+                class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/30">Create
+                Account</button>
+        </form>
+        <p class="mt-6 text-center text-slate-500">Have an account? <a href="/login"
+                class="text-blue-600 font-bold">Login</a></p>
+    </div>
+</div>
+{% endblock %}

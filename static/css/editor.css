@@ -1,0 +1,346 @@
+:root {
+    --e-bg: #ffffff;
+    --e-sidebar: #f8f9fa;
+    --e-border: #e2e8f0;
+    --e-text: #334155;
+    --e-active: #e0e7ff;
+    --e-accent: #4f46e5;
+}
+
+body {
+    overflow: hidden;
+}
+
+#app-container {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    height: 100vh;
+    background: var(--e-bg);
+}
+
+/* Sidebar */
+.sidebar {
+    background: var(--e-sidebar);
+    border-right: 1px solid var(--e-border);
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-top {
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--e-border);
+}
+
+.brand-logo {
+    color: var(--e-accent);
+    font-size: 1.5rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.icon-btn {
+    border: 1px solid var(--e-border);
+    background: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--e-text);
+    display: grid;
+    place-items: center;
+    transition: all 0.2s;
+}
+
+.icon-btn:hover {
+    border-color: var(--e-accent);
+    color: var(--e-accent);
+}
+
+.file-explorer-header {
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.05em;
+}
+
+.fe-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #64748b;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.fe-actions button:hover {
+    color: var(--e-accent);
+}
+
+.file-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 0.5rem;
+}
+
+.tree-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--e-text);
+    gap: 0.5rem;
+    margin-bottom: 2px;
+}
+
+.tree-item:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.tree-item.active {
+    background: var(--e-active);
+    color: var(--e-accent);
+    font-weight: 500;
+}
+
+.tree-item i {
+    width: 16px;
+    text-align: center;
+}
+
+.sidebar-bottom {
+    padding: 1rem;
+    border-top: 1px solid var(--e-border);
+}
+
+.back-link {
+    font-size: 0.85rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Workspace */
+.main-workspace {
+    display: grid;
+    grid-template-columns: 1fr 40%;
+    overflow: hidden;
+}
+
+.workspace-panel {
+    position: relative;
+    height: 100%;
+    display: none;
+}
+
+.workspace-panel.active {
+    display: block;
+}
+
+/* Code Editor */
+#editor-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #cbd5e1;
+}
+
+#editor-placeholder i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.placeholder-content {
+    text-align: center;
+}
+
+#editor {
+    position: absolute;
+    inset: 0;
+}
+
+/* Image Editor */
+#image-editor-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #282828;
+}
+
+/* TUI needs dark background usually */
+.img-toolbar {
+    background: white;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--e-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.img-toolbar span {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.img-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+#tui-image-editor-container {
+    flex: 1;
+    height: 100%;
+}
+
+/* Preview & Console */
+.preview-sidebar {
+    border-left: 1px solid var(--e-border);
+    display: flex;
+    flex-direction: column;
+    background: white;
+}
+
+.tabs {
+    display: flex;
+    border-bottom: 1px solid var(--e-border);
+    background: var(--e-sidebar);
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    background: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+}
+
+.tab-btn.active {
+    color: var(--e-accent);
+    border-bottom-color: var(--e-accent);
+    background: white;
+}
+
+.tab-content {
+    flex: 1;
+    position: relative;
+}
+
+iframe,
+.console-panel {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: none;
+}
+
+iframe.active-panel,
+.console-panel.active-panel {
+    display: block;
+}
+
+.console-panel {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+}
+
+.console-header {
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--e-border);
+    display: flex;
+    justify-content: flex-end;
+}
+
+#console-output {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+}
+
+.log-msg {
+    padding: 4px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.log-error {
+    color: #ef4444;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: none;
+    place-items: center;
+    z-index: 100;
+    backdrop-filter: blur(2px);
+}
+
+.modal-box {
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    position: relative;
+    text-align: center;
+}
+
+.input-group {
+    display: flex;
+    margin-top: 1rem;
+    border: 1px solid var(--e-border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.input-group input {
+    flex: 1;
+    border: none;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    outline: none;
+}
+
+.input-group button {
+    border: none;
+    background: var(--e-accent);
+    color: white;
+    padding: 0 1rem;
+    cursor: pointer;
+}
+
+.close-modal {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #94a3b8;
+}

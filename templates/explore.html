@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+{% block title %}Explore - CatoCode{% endblock %}
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <div class="max-w-7xl mx-auto px-6 py-12">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-black text-slate-800 mb-4">Explore Community Creations</h1>
+            <p class="text-slate-500">Discover amazing games and websites made by our community</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for p in projects %}
+            <div class="bg-white rounded-2xl border shadow-sm hover:shadow-xl transition overflow-hidden group">
+                <div class="h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <i class="fas fa-globe text-white/30 text-6xl"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg mb-2">{{ p.name }}</h3>
+                    <p class="text-slate-500 text-sm mb-4">{{ p.description or 'A community project' }}</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-400"><i class="fas fa-user mr-1"></i> {{ p.author }}</span>
+                        <a href="/site/{{ p.project_uid }}" target="_blank"
+                            class="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition">
+                            View
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-span-full text-center py-20 text-slate-400">
+                <i class="fas fa-rocket text-6xl mb-4 opacity-30"></i>
+                <p class="text-xl font-bold">No projects shared yet</p>
+                <p class="text-sm">Be the first to share your creation!</p>
+            </div>
+            {% endfor %}
+
+            {% for g in games %}
+            <div class="bg-white rounded-2xl border shadow-sm hover:shadow-xl transition overflow-hidden group">
+                <div class="h-48 bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center">
+                    <i class="fas fa-gamepad text-white/30 text-6xl"></i>
+                </div>
+                <div class="p-5">
+                    <span
+                        class="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full mb-2 inline-block">Game</span>
+                    <h3 class="font-bold text-lg mb-2">{{ g.name }}</h3>
+                    <p class="text-slate-500 text-sm mb-4">{{ g.description or 'A community game' }}</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-400"><i class="fas fa-user mr-1"></i> {{ g.author }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

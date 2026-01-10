@@ -1,0 +1,566 @@
+{% extends "dashboard/layout.html" %}
+{% block title %}Game Builder - CatoCode{% endblock %}
+{% block content %}
+<style>
+    .builder-container {
+        display: grid;
+        grid-template-columns: 250px 1fr 350px;
+        gap: 0;
+        height: calc(100vh - 80px);
+    }
+
+    .panel {
+        background: #fff;
+        border-right: 1px solid #e2e8f0;
+        overflow-y: auto;
+    }
+
+    .panel-header {
+        padding: 16px;
+        border-bottom: 1px solid #e2e8f0;
+        font-weight: bold;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .scene-container {
+        background: #f1f5f9;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .scene-toolbar {
+        padding: 12px;
+        background: #fff;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .scene-toolbar button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 13px;
+    }
+
+    .scene-toolbar .btn-play {
+        background: #22c55e;
+        color: white;
+    }
+
+    .scene-toolbar .btn-stop {
+        background: #ef4444;
+        color: white;
+    }
+
+    .scene-canvas {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    #game-canvas {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        cursor: crosshair;
+    }
+
+    /* Sprites */
+    .sprite-item {
+        padding: 12px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .sprite-item:hover {
+        background: #f8fafc;
+    }
+
+    .sprite-item.selected {
+        background: #eff6ff;
+        border-left: 3px solid #3b82f6;
+    }
+
+    .sprite-preview {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+
+    /* Blocks */
+    .block-category {
+        padding: 8px 16px;
+        font-size: 11px;
+        font-weight: bold;
+        text-transform: uppercase;
+        color: #64748b;
+        background: #f8fafc;
+    }
+
+    .block-item {
+        padding: 10px 16px;
+        cursor: grab;
+        font-size: 13px;
+        border-left: 4px solid;
+        margin: 4px 8px;
+        border-radius: 4px;
+        transition: transform 0.1s;
+    }
+
+    .block-item:hover {
+        transform: translateX(4px);
+    }
+
+    .block-item:active {
+        cursor: grabbing;
+    }
+
+    .block-events {
+        background: #fef3c7;
+        border-color: #f59e0b;
+    }
+
+    .block-motion {
+        background: #dbeafe;
+        border-color: #3b82f6;
+    }
+
+    .block-looks {
+        background: #ede9fe;
+        border-color: #8b5cf6;
+    }
+
+    .block-control {
+        background: #d1fae5;
+        border-color: #10b981;
+    }
+
+    /* Code Panel */
+    .code-panel {
+        background: #1e293b;
+        color: #e2e8f0;
+    }
+
+    .code-panel .panel-header {
+        background: #0f172a;
+        color: #fff;
+        border-color: #334155;
+    }
+
+    #code-output {
+        font-family: 'Fira Code', monospace;
+        font-size: 12px;
+        padding: 16px;
+        white-space: pre-wrap;
+        line-height: 1.6;
+    }
+
+    .code-keyword {
+        color: #c084fc;
+    }
+
+    .code-string {
+        color: #4ade80;
+    }
+
+    .code-comment {
+        color: #64748b;
+    }
+</style>
+
+<div class="builder-container">
+    <!-- Sprites Panel -->
+    <div class="panel">
+        <div class="panel-header">
+            <span><i class="fas fa-ghost"></i> Sprites</span>
+            <button onclick="addSprite()"
+                style="padding:4px 12px;background:#3b82f6;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">+
+                Add</button>
+        </div>
+        <div id="sprite-list">
+            <div class="sprite-item selected" data-id="player" onclick="selectSprite('player')">
+                <div class="sprite-preview" style="background:#22c55e;">🟩</div>
+                <div>
+                    <div style="font-weight:bold;font-size:13px;">Player</div>
+                    <div style="font-size:11px;color:#64748b;">50 x 50</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Selected Sprite Properties -->
+        <div style="padding:16px;border-top:1px solid #e2e8f0;margin-top:auto;">
+            <div style="font-size:12px;font-weight:bold;margin-bottom:12px;">Properties</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>
+                    <label style="font-size:11px;color:#64748b;">X</label>
+                    <input type="number" id="prop-x" value="400"
+                        style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:4px;"
+                        onchange="updateSpriteProp('x', this.value)">
+                </div>
+                <div>
+                    <label style="font-size:11px;color:#64748b;">Y</label>
+                    <input type="number" id="prop-y" value="300"
+                        style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:4px;"
+                        onchange="updateSpriteProp('y', this.value)">
+                </div>
+                <div>
+                    <label style="font-size:11px;color:#64748b;">Width</label>
+                    <input type="number" id="prop-w" value="50"
+                        style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:4px;"
+                        onchange="updateSpriteProp('width', this.value)">
+                </div>
+                <div>
+                    <label style="font-size:11px;color:#64748b;">Height</label>
+                    <input type="number" id="prop-h" value="50"
+                        style="width:100%;padding:6px;border:1px solid #e2e8f0;border-radius:4px;"
+                        onchange="updateSpriteProp('height', this.value)">
+                </div>
+            </div>
+            <div style="margin-top:12px;">
+                <label style="font-size:11px;color:#64748b;">Color</label>
+                <input type="color" id="prop-color" value="#22c55e"
+                    style="width:100%;height:32px;border:none;cursor:pointer;"
+                    onchange="updateSpriteProp('color', this.value)">
+            </div>
+        </div>
+    </div>
+
+    <!-- Scene + Blocks -->
+    <div class="scene-container">
+        <div class="scene-toolbar">
+            <button class="btn-play" onclick="playGame()"><i class="fas fa-play"></i> Play</button>
+            <button class="btn-stop" onclick="stopGame()"><i class="fas fa-stop"></i> Stop</button>
+            <span style="flex:1;"></span>
+            <span style="font-size:12px;color:#64748b;">800 x 450</span>
+        </div>
+        <div class="scene-canvas">
+            <canvas id="game-canvas" width="800" height="450"></canvas>
+        </div>
+
+        <!-- Blocks below scene -->
+        <div style="height:200px;overflow-y:auto;border-top:1px solid #e2e8f0;background:#fff;">
+            <div class="block-category">Events</div>
+            <div class="block-item block-events" draggable="true" data-code="onStart">🚀 When Game Starts</div>
+            <div class="block-item block-events" draggable="true" data-code="onUpdate">🔄 Every Frame</div>
+            <div class="block-item block-events" draggable="true" data-code="onKeySpace">⌨️ When Space Pressed</div>
+
+            <div class="block-category">Motion</div>
+            <div class="block-item block-motion" draggable="true" data-code="moveRight">➡️ Move Right</div>
+            <div class="block-item block-motion" draggable="true" data-code="moveLeft">⬅️ Move Left</div>
+            <div class="block-item block-motion" draggable="true" data-code="moveUp">⬆️ Move Up</div>
+            <div class="block-item block-motion" draggable="true" data-code="moveDown">⬇️ Move Down</div>
+            <div class="block-item block-motion" draggable="true" data-code="goToCenter">🎯 Go to Center</div>
+
+            <div class="block-category">Looks</div>
+            <div class="block-item block-looks" draggable="true" data-code="setColorRed">🔴 Set Color Red</div>
+            <div class="block-item block-looks" draggable="true" data-code="setColorGreen">🟢 Set Color Green</div>
+            <div class="block-item block-looks" draggable="true" data-code="setColorBlue">🔵 Set Color Blue</div>
+            <div class="block-item block-looks" draggable="true" data-code="grow">📈 Grow Size</div>
+
+            <div class="block-category">Control</div>
+            <div class="block-item block-control" draggable="true" data-code="addScore">⭐ Add 10 to Score</div>
+            <div class="block-item block-control" draggable="true" data-code="increaseSpeed">🏃 Increase Speed</div>
+        </div>
+    </div>
+
+    <!-- Code Panel -->
+    <div class="panel code-panel">
+        <div class="panel-header">
+            <span><i class="fas fa-code"></i> Generated Code</span>
+            <button onclick="copyCode()"
+                style="padding:4px 12px;background:#334155;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">Copy</button>
+        </div>
+
+        <!-- Script Blocks Area -->
+        <div id="script-blocks"
+            style="min-height:150px;padding:16px;border-bottom:1px solid #334155;background:#0f172a;">
+            <p style="color:#64748b;font-size:12px;text-align:center;padding:30px;">Drag blocks here to add code</p>
+        </div>
+
+        <div id="code-output">// Your game code will appear here</div>
+    </div>
+</div>
+
+<script>
+    // ===== GAME STATE =====
+    let sprites = {
+        player: { x: 400, y: 225, width: 50, height: 50, color: '#22c55e', name: 'Player' }
+    };
+    let selectedSprite = 'player';
+    let scriptBlocks = [];
+    let isPlaying = false;
+    let gameLoop = null;
+
+    // ===== CANVAS SETUP =====
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+
+    // ===== SPRITE FUNCTIONS =====
+    function selectSprite(id) {
+        selectedSprite = id;
+        document.querySelectorAll('.sprite-item').forEach(el => el.classList.remove('selected'));
+        document.querySelector(`[data-id="${id}"]`)?.classList.add('selected');
+
+        const s = sprites[id];
+        if (s) {
+            document.getElementById('prop-x').value = s.x;
+            document.getElementById('prop-y').value = s.y;
+            document.getElementById('prop-w').value = s.width;
+            document.getElementById('prop-h').value = s.height;
+            document.getElementById('prop-color').value = s.color;
+        }
+        drawScene();
+    }
+
+    function updateSpriteProp(prop, value) {
+        if (sprites[selectedSprite]) {
+            sprites[selectedSprite][prop] = prop === 'color' ? value : parseFloat(value);
+            drawScene();
+            generateCode();
+        }
+    }
+
+    function addSprite() {
+        const name = prompt('Sprite name:', 'Sprite' + (Object.keys(sprites).length + 1));
+        if (!name) return;
+        const id = name.toLowerCase().replace(/\s+/g, '_');
+        sprites[id] = { x: 400, y: 225, width: 40, height: 40, color: '#3b82f6', name };
+        renderSpriteList();
+        selectSprite(id);
+    }
+
+    function renderSpriteList() {
+        const list = document.getElementById('sprite-list');
+        list.innerHTML = '';
+        for (const [id, s] of Object.entries(sprites)) {
+            list.innerHTML += `
+            <div class="sprite-item ${id === selectedSprite ? 'selected' : ''}" data-id="${id}" onclick="selectSprite('${id}')">
+                <div class="sprite-preview" style="background:${s.color};">🎮</div>
+                <div>
+                    <div style="font-weight:bold;font-size:13px;">${s.name}</div>
+                    <div style="font-size:11px;color:#64748b;">${s.width} x ${s.height}</div>
+                </div>
+            </div>
+        `;
+        }
+    }
+
+    // ===== DRAWING =====
+    function drawScene() {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw grid
+        ctx.strokeStyle = '#f1f5f9';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < canvas.width; x += 50) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+        for (let y = 0; y < canvas.height; y += 50) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+
+        // Draw sprites
+        for (const [id, s] of Object.entries(sprites)) {
+            ctx.fillStyle = s.color;
+            ctx.fillRect(s.x - s.width / 2, s.y - s.height / 2, s.width, s.height);
+
+            // Selection outline
+            if (id === selectedSprite) {
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(s.x - s.width / 2 - 4, s.y - s.height / 2 - 4, s.width + 8, s.height + 8);
+                ctx.setLineDash([]);
+            }
+        }
+    }
+
+    // ===== DRAG & DROP BLOCKS =====
+    const scriptArea = document.getElementById('script-blocks');
+
+    document.querySelectorAll('.block-item').forEach(block => {
+        block.addEventListener('dragstart', e => {
+            e.dataTransfer.setData('text/plain', block.dataset.code);
+        });
+    });
+
+    scriptArea.addEventListener('dragover', e => {
+        e.preventDefault();
+        scriptArea.style.background = '#1e293b';
+    });
+
+    scriptArea.addEventListener('dragleave', () => {
+        scriptArea.style.background = '#0f172a';
+    });
+
+    scriptArea.addEventListener('drop', e => {
+        e.preventDefault();
+        scriptArea.style.background = '#0f172a';
+        const code = e.dataTransfer.getData('text/plain');
+        addBlock(code);
+    });
+
+    function addBlock(code) {
+        scriptBlocks.push(code);
+        renderScriptBlocks();
+        generateCode();
+    }
+
+    function removeBlock(index) {
+        scriptBlocks.splice(index, 1);
+        renderScriptBlocks();
+        generateCode();
+    }
+
+    function renderScriptBlocks() {
+        if (scriptBlocks.length === 0) {
+            scriptArea.innerHTML = '<p style="color:#64748b;font-size:12px;text-align:center;padding:30px;">Drag blocks here to add code</p>';
+            return;
+        }
+
+        const blockLabels = {
+            onStart: '🚀 When Game Starts',
+            onUpdate: '🔄 Every Frame',
+            onKeySpace: '⌨️ When Space Pressed',
+            moveRight: '➡️ Move Right',
+            moveLeft: '⬅️ Move Left',
+            moveUp: '⬆️ Move Up',
+            moveDown: '⬇️ Move Down',
+            goToCenter: '🎯 Go to Center',
+            setColorRed: '🔴 Set Color Red',
+            setColorGreen: '🟢 Set Color Green',
+            setColorBlue: '🔵 Set Color Blue',
+            grow: '📈 Grow Size',
+            addScore: '⭐ Add 10 to Score',
+            increaseSpeed: '🏃 Increase Speed'
+        };
+
+        scriptArea.innerHTML = scriptBlocks.map((code, i) => `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="background:#334155;padding:6px 12px;border-radius:6px;font-size:12px;flex:1;">${blockLabels[code] || code}</span>
+            <button onclick="removeBlock(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;">✕</button>
+        </div>
+    `).join('');
+    }
+
+    // ===== CODE GENERATION =====
+    function generateCode() {
+        const codeMap = {
+            onStart: '// When game starts\nfunction onStart() {\n  console.log("Game started!");\n}\n',
+            onUpdate: '// Every frame\nfunction onUpdate() {\n',
+            onKeySpace: 'if (keys["Space"]) {\n  // Space pressed\n}\n',
+            moveRight: `${selectedSprite}.x += ${selectedSprite}.speed;\n`,
+            moveLeft: `${selectedSprite}.x -= ${selectedSprite}.speed;\n`,
+            moveUp: `${selectedSprite}.y -= ${selectedSprite}.speed;\n`,
+            moveDown: `${selectedSprite}.y += ${selectedSprite}.speed;\n`,
+            goToCenter: `${selectedSprite}.x = 400; ${selectedSprite}.y = 225;\n`,
+            setColorRed: `${selectedSprite}.color = "#ef4444";\n`,
+            setColorGreen: `${selectedSprite}.color = "#22c55e";\n`,
+            setColorBlue: `${selectedSprite}.color = "#3b82f6";\n`,
+            grow: `${selectedSprite}.width += 10; ${selectedSprite}.height += 10;\n`,
+            addScore: 'score += 10;\n',
+            increaseSpeed: `${selectedSprite}.speed += 1;\n`
+        };
+
+        let code = '// ===== GENERATED GAME CODE =====\n\n';
+
+        // Sprites
+        code += '// Sprites\n';
+        for (const [id, s] of Object.entries(sprites)) {
+            code += `const ${id} = { x: ${s.x}, y: ${s.y}, width: ${s.width}, height: ${s.height}, color: "${s.color}", speed: 5 };\n`;
+        }
+        code += '\nlet score = 0;\nlet keys = {};\n\n';
+
+        // Script blocks
+        code += '// Game Logic\n';
+        for (const block of scriptBlocks) {
+            code += codeMap[block] || `// ${block}\n`;
+        }
+
+        document.getElementById('code-output').textContent = code;
+    }
+
+    function copyCode() {
+        navigator.clipboard.writeText(document.getElementById('code-output').textContent);
+        alert('Code copied!');
+    }
+
+    // ===== GAME PLAY =====
+    function playGame() {
+        if (isPlaying) return;
+        isPlaying = true;
+        // Simple animation for demo
+        gameLoop = setInterval(() => {
+            drawScene();
+        }, 16);
+    }
+
+    function stopGame() {
+        isPlaying = false;
+        if (gameLoop) clearInterval(gameLoop);
+        drawScene();
+    }
+
+    // ===== CANVAS CLICK TO SELECT/MOVE =====
+    canvas.addEventListener('mousedown', e => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        // Check if clicking on a sprite
+        for (const [id, s] of Object.entries(sprites)) {
+            if (x >= s.x - s.width / 2 && x <= s.x + s.width / 2 &&
+                y >= s.y - s.height / 2 && y <= s.y + s.height / 2) {
+                selectSprite(id);
+
+                // Enable dragging
+                const onMove = (e2) => {
+                    const nx = e2.clientX - rect.left;
+                    const ny = e2.clientY - rect.top;
+                    sprites[id].x = Math.round(nx);
+                    sprites[id].y = Math.round(ny);
+                    document.getElementById('prop-x').value = sprites[id].x;
+                    document.getElementById('prop-y').value = sprites[id].y;
+                    drawScene();
+                    generateCode();
+                };
+                const onUp = () => {
+                    canvas.removeEventListener('mousemove', onMove);
+                    canvas.removeEventListener('mouseup', onUp);
+                };
+                canvas.addEventListener('mousemove', onMove);
+                canvas.addEventListener('mouseup', onUp);
+                return;
+            }
+        }
+    });
+
+    // ===== INIT =====
+    drawScene();
+    generateCode();
+</script>
+{% endblock %}

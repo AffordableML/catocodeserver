@@ -1,0 +1,297 @@
+{% extends "dashboard/layout.html" %}
+{% block dashboard_content %}
+<div class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-3xl font-bold">My Plugins</h1>
+        <p class="text-slate-500 text-sm mt-1">Extend your editor with custom functionality</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="/marketplace" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-200">
+            <i class="fas fa-store mr-1"></i> Marketplace
+        </a>
+        <button onclick="document.getElementById('plugin-modal').classList.remove('hidden')"
+            class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/30">
+            <i class="fas fa-plus mr-1"></i> Add Plugin
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for p in plugins %}
+    <div class="bg-white border rounded-xl p-6 shadow-sm relative group" data-plugin-id="{{ p.id }}">
+        <!-- Actions -->
+        <div class="absolute top-4 right-4 flex gap-2">
+            <button onclick="editPlugin({{ p.id }})" class="text-slate-300 hover:text-green-500 transition"
+                title="Edit">
+                <i class="fas fa-edit"></i>
+            </button>
+            <button onclick="sharePlugin({{ p.id }}, {{ p.is_public or 0 }})"
+                class="text-slate-300 hover:text-blue-500 transition" title="Share to Marketplace">
+                <i class="fas {{ 'fa-globe text-blue-500' if p.is_public else 'fa-share' }}"></i>
+            </button>
+            <button onclick="deletePlugin({{ p.id }})" class="text-slate-300 hover:text-red-500 transition"
+                title="Delete">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+
+        <!-- Header with Icon -->
+        <div class="flex items-start gap-4 mb-4">
+            {% if p.image_url %}
+            <img src="{{ p.image_url }}" class="w-12 h-12 rounded-lg object-cover" alt="">
+            {% else %}
+            <div
+                class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white">
+                <i class="fas fa-puzzle-piece"></i>
+            </div>
+            {% endif %}
+            <div class="flex-1 min-w-0">
+                <h3 class="font-bold text-lg truncate">{{ p.name }}</h3>
+                <p class="text-slate-500 text-xs truncate">{{ p.description or 'No description' }}</p>
+            </div>
+        </div>
+
+        <!-- Code Preview -->
+        <div class="bg-slate-50 p-3 rounded font-mono text-xs text-slate-600 overflow-x-auto h-20 mb-4">
+            {{ p.js_code[:150] }}{% if p.js_code|length > 150 %}...{% endif %}
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="text-xs px-2 py-1 bg-slate-100 text-slate-500 rounded-full">{{ p.category or 'utility'
+                    }}</span>
+                {% if p.is_public %}
+                <span class="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded-full">
+                    <i class="fas fa-globe mr-1"></i> Public
+                </span>
+                {% endif %}
+            </div>
+
+            <!-- Toggle Switch -->
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" class="sr-only peer" {{ 'checked' if p.is_active else '' }}
+                    onchange="togglePlugin({{ p.id }}, this)">
+                <div
+                    class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500">
+                </div>
+                <span
+                    class="ml-2 text-xs font-bold status-text {{ 'text-green-600' if p.is_active else 'text-slate-400' }}">
+                    {{ 'ON' if p.is_active else 'OFF' }}
+                </span>
+            </label>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-span-full text-center py-16 text-slate-400 bg-slate-50 rounded-xl border border-dashed">
+        <i class="fas fa-puzzle-piece text-5xl mb-4 opacity-30"></i>
+        <p class="font-bold text-lg">No plugins yet</p>
+        <p class="text-sm mb-4">Create a custom plugin or install one from the marketplace.</p>
+        <div class="flex justify-center gap-2">
+            <button onclick="document.getElementById('plugin-modal').classList.remove('hidden')"
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Create Plugin</button>
+            <a href="/marketplace" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm">Browse
+                Marketplace</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Create Plugin Modal -->
+<div id="plugin-modal" class="fixed inset-0 bg-black/50 hidden z-50"
+    onclick="if(event.target===this) this.classList.add('hidden')">
+    <div
+        class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-xl absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-h-[90vh] overflow-y-auto">
+        <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+            <i class="fas fa-puzzle-piece text-blue-600"></i> Create Plugin
+        </h2>
+        <form method="POST">
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Name *</label>
+                    <input name="name"
+                        class="w-full p-3 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                        required placeholder="My Plugin">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Category</label>
+                    <select name="category"
+                        class="w-full p-3 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="utility">Utility</option>
+                        <option value="editor">Editor</option>
+                        <option value="theme">Theme</option>
+                        <option value="productivity">Productivity</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-slate-500 mb-1">Description</label>
+                <input name="description"
+                    class="w-full p-3 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="What does your plugin do?">
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-slate-500 mb-1">Image URL (optional)</label>
+                <input name="image_url"
+                    class="w-full p-3 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="https://example.com/icon.png">
+            </div>
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-slate-500 mb-1">JavaScript Code *</label>
+                <textarea name="code"
+                    class="w-full p-3 border rounded-lg bg-slate-900 text-green-400 font-mono text-xs h-48 focus:ring-2 focus:ring-blue-500 outline-none"
+                    required placeholder="// Your plugin code here
+console.log('Plugin loaded!');
+
+// Example: Add keyboard shortcut
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'b') {
+        alert('Hello from plugin!');
+    }
+});"></textarea>
+            </div>
+            <div class="flex justify-between items-center">
+                <a href="/sdk" class="text-blue-600 text-sm font-bold hover:underline">
+                    <i class="fas fa-book mr-1"></i> View SDK Docs
+                </a>
+                <div class="flex gap-2">
+                    <button type="button" onclick="document.getElementById('plugin-modal').classList.add('hidden')"
+                        class="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Cancel</button>
+                    <button
+                        class="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/20">
+                        <i class="fas fa-plus mr-1"></i> Create Plugin
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Plugin Modal -->
+<div id="edit-modal" class="fixed inset-0 bg-black/50 hidden z-50"
+    onclick="if(event.target===this) this.classList.add('hidden')">
+    <div
+        class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-xl absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-h-[90vh] overflow-y-auto">
+        <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+            <i class="fas fa-edit text-green-600"></i> Edit Plugin
+        </h2>
+        <input type="hidden" id="edit-id">
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">Name *</label>
+                <input id="edit-name"
+                    class="w-full p-3 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                    required placeholder="My Plugin">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">Category</label>
+                <select id="edit-category"
+                    class="w-full p-3 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="utility">Utility</option>
+                    <option value="editor">Editor</option>
+                    <option value="theme">Theme</option>
+                    <option value="productivity">Productivity</option>
+                </select>
+            </div>
+        </div>
+        <div class="mb-4">
+            <label class="block text-xs font-bold text-slate-500 mb-1">Description</label>
+            <input id="edit-description"
+                class="w-full p-3 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="What does your plugin do?">
+        </div>
+        <div class="mb-4">
+            <label class="block text-xs font-bold text-slate-500 mb-1">Image URL (optional)</label>
+            <input id="edit-image"
+                class="w-full p-3 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="https://example.com/icon.png">
+        </div>
+        <div class="mb-6">
+            <label class="block text-xs font-bold text-slate-500 mb-1">JavaScript Code *</label>
+            <textarea id="edit-code"
+                class="w-full p-3 border rounded-lg bg-slate-900 text-green-400 font-mono text-xs h-48 focus:ring-2 focus:ring-blue-500 outline-none"
+                required></textarea>
+        </div>
+        <div class="flex justify-end gap-2">
+            <button type="button" onclick="document.getElementById('edit-modal').classList.add('hidden')"
+                class="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Cancel</button>
+            <button onclick="saveEdit()"
+                class="px-6 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 shadow-lg shadow-green-500/20">
+                <i class="fas fa-save mr-1"></i> Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function deletePlugin(id) {
+        if (!confirm('Delete this plugin? This cannot be undone.')) return;
+        await fetch('/api/plugin/' + id + '/delete', { method: 'POST' });
+        location.reload();
+    }
+
+    async function togglePlugin(id, checkbox) {
+        const card = checkbox.closest('[data-plugin-id]');
+        const statusText = card.querySelector('.status-text');
+
+        try {
+            const res = await fetch('/api/plugin/' + id + '/toggle', { method: 'POST' });
+            const data = await res.json();
+
+            if (data.success) {
+                statusText.textContent = data.is_active ? 'ON' : 'OFF';
+                statusText.className = 'ml-2 text-xs font-bold status-text ' + (data.is_active ? 'text-green-600' : 'text-slate-400');
+            }
+        } catch (e) {
+            checkbox.checked = !checkbox.checked;
+        }
+    }
+
+    async function sharePlugin(id, currentStatus) {
+        const action = currentStatus ? 'unshare from' : 'share to';
+        if (!confirm(`${currentStatus ? 'Remove' : 'Share'} this plugin ${action} the marketplace?`)) return;
+
+        const res = await fetch('/api/plugin/' + id + '/share', { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+            location.reload();
+        }
+    }
+
+    async function editPlugin(id) {
+        const res = await fetch('/api/plugin/' + id);
+        const data = await res.json();
+        if (data.error) { alert('Plugin not found'); return; }
+
+        document.getElementById('edit-id').value = data.id;
+        document.getElementById('edit-name').value = data.name;
+        document.getElementById('edit-description').value = data.description;
+        document.getElementById('edit-image').value = data.image_url;
+        document.getElementById('edit-category').value = data.category;
+        document.getElementById('edit-code').value = data.code;
+        document.getElementById('edit-modal').classList.remove('hidden');
+    }
+
+    async function saveEdit() {
+        const id = document.getElementById('edit-id').value;
+        const res = await fetch('/api/plugin/' + id + '/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: document.getElementById('edit-name').value,
+                description: document.getElementById('edit-description').value,
+                image_url: document.getElementById('edit-image').value,
+                category: document.getElementById('edit-category').value,
+                code: document.getElementById('edit-code').value
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error saving plugin');
+        }
+    }
+</script>
+{% endblock %}

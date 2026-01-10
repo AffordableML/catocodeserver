@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>{{ project_name }}</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        #ui {
+            position: absolute;
+            color: white;
+            text-align: center;
+        }
+
+        /* User CSS */
+        <style id="user-css">
+    </style>
+    </style>
+</head>
+
+<body>
+    <div id="ui">
+        <h1 id="title"></h1>
+        <button id="btn"
+            style="padding:15px 30px; font-size:20px; border:none; border-radius:50px; cursor:pointer;">PLAY</button>
+    </div>
+    <canvas id="game" width="1280" height="720"></canvas>
+
+    <script>
+        { { assets_js | safe } }
+        { { config_js | safe } }
+        { { levels_js | safe } }
+
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+
+        // Load Assets
+        const textures = {};
+        const sounds = {};
+        let loaded = 0;
+        const total = Object.keys(ASSETS).length;
+
+        function start() {
+            // ... (Simplified Engine Logic Here - similar to game_player.html but using ASSETS var) ...
+            // Apply CONFIG.ui to DOM
+            if (CONFIG.ui) {
+                document.getElementById('title').innerText = CONFIG.ui.title;
+                document.getElementById('title').style.color = CONFIG.ui.titleColor;
+                document.getElementById('btn').style.backgroundColor = CONFIG.ui.btnColor;
+                document.getElementById('user-css').innerText = CONFIG.ui.css;
+                if (CONFIG.ui.skipTitle) startGame();
+            }
+        }
+
+        // Preload
+        for (let [k, v] of Object.entries(ASSETS)) {
+            if (k.endsWith('.png')) {
+                const img = new Image();
+                img.onload = () => { textures[k.split('.')[0]] = img; checkLoad(); };
+                img.src = v;
+            } else {
+                const aud = new Audio(v);
+                sounds[k] = aud;
+                checkLoad();
+            }
+        }
+        if (total === 0) start();
+        function checkLoad() { loaded++; if (loaded === total) start(); }
+
+        document.getElementById('btn').onclick = startGame;
+
+        function startGame() {
+            document.getElementById('ui').style.display = 'none';
+            // Start Loop
+            // ... (Engine loop same as player)
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,313 @@
+{% extends "layout.html" %}
+{% block title %}Plugin SDK - CatoCode{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-white">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
+        <div class="max-w-4xl mx-auto px-6">
+            <h1 class="text-4xl md:text-5xl font-black mb-4">Plugin SDK</h1>
+            <p class="text-xl text-blue-100">Build powerful extensions for CatoCode</p>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-6 py-12">
+        <!-- Navigation -->
+        <nav class="mb-12 p-4 bg-slate-50 rounded-xl border sticky top-20 z-10">
+            <div class="flex flex-wrap gap-4 text-sm font-bold">
+                <a href="#getting-started" class="text-blue-600 hover:underline">Getting Started</a>
+                <a href="#editor-api" class="text-slate-600 hover:text-blue-600">Editor API</a>
+                <a href="#file-api" class="text-slate-600 hover:text-blue-600">File API</a>
+                <a href="#ui-api" class="text-slate-600 hover:text-blue-600">UI API</a>
+                <a href="#examples" class="text-slate-600 hover:text-blue-600">Examples</a>
+                <a href="#best-practices" class="text-slate-600 hover:text-blue-600">Best Practices</a>
+            </div>
+        </nav>
+
+        <!-- Getting Started -->
+        <section id="getting-started" class="mb-16">
+            <h2 class="text-2xl font-black text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-rocket text-blue-600"></i> Getting Started
+            </h2>
+            <p class="text-slate-600 mb-6">
+                Plugins are JavaScript code that runs when the CatoCode editor loads. They have access to the editor,
+                file system, and UI components, allowing you to extend functionality.
+            </p>
+
+            <div class="bg-slate-900 rounded-xl p-6 mb-6">
+                <div class="text-xs text-slate-400 mb-2 font-bold uppercase">Basic Plugin Structure</div>
+                <pre class="text-sm text-green-400 font-mono overflow-x-auto"><code>// Your first plugin
+console.log('🎉 My plugin loaded!');
+
+// Add custom functionality
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'm') {
+        alert('Plugin hotkey triggered!');
+    }
+});</code></pre>
+            </div>
+
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                <p class="text-blue-800 font-bold">💡 Quick Start</p>
+                <p class="text-blue-700 text-sm">Go to Dashboard → Plugins → Add Plugin, paste your code, and it will
+                    run every time you open the editor!</p>
+            </div>
+        </section>
+
+        <!-- Editor API -->
+        <section id="editor-api" class="mb-16">
+            <h2 class="text-2xl font-black text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-code text-purple-600"></i> Editor API
+            </h2>
+            <p class="text-slate-600 mb-6">
+                CatoCode uses the Ace Editor. You can access the editor instance to manipulate code, add commands, and
+                more.
+            </p>
+
+            <div class="space-y-4">
+                <div class="border rounded-xl overflow-hidden">
+                    <div class="bg-slate-100 px-4 py-2 font-bold text-sm">Get Editor Instance</div>
+                    <div class="bg-slate-900 p-4">
+                        <pre
+                            class="text-sm text-green-400 font-mono"><code>const editor = ace.edit('editor');</code></pre>
+                    </div>
+                </div>
+
+                <div class="border rounded-xl overflow-hidden">
+                    <div class="bg-slate-100 px-4 py-2 font-bold text-sm">Insert Text</div>
+                    <div class="bg-slate-900 p-4">
+                        <pre class="text-sm text-green-400 font-mono"><code>editor.insert('Hello World');</code></pre>
+                    </div>
+                </div>
+
+                <div class="border rounded-xl overflow-hidden">
+                    <div class="bg-slate-100 px-4 py-2 font-bold text-sm">Get Selected Text</div>
+                    <div class="bg-slate-900 p-4">
+                        <pre
+                            class="text-sm text-green-400 font-mono"><code>const selection = editor.getSelectedText();</code></pre>
+                    </div>
+                </div>
+
+                <div class="border rounded-xl overflow-hidden">
+                    <div class="bg-slate-100 px-4 py-2 font-bold text-sm">Replace Selection</div>
+                    <div class="bg-slate-900 p-4">
+                        <pre class="text-sm text-green-400 font-mono"><code>const text = editor.getSelectedText();
+editor.session.replace(editor.selection.getRange(), text.toUpperCase());</code></pre>
+                    </div>
+                </div>
+
+                <div class="border rounded-xl overflow-hidden">
+                    <div class="bg-slate-100 px-4 py-2 font-bold text-sm">Add Custom Command</div>
+                    <div class="bg-slate-900 p-4">
+                        <pre class="text-sm text-green-400 font-mono"><code>editor.commands.addCommand({
+    name: 'myCommand',
+    bindKey: { win: 'Ctrl-Shift-M', mac: 'Cmd-Shift-M' },
+    exec: function(editor) {
+        alert('Custom command!');
+    }
+});</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- File API -->
+        <section id="file-api" class="mb-16">
+            <h2 class="text-2xl font-black text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-folder text-yellow-600"></i> File API
+            </h2>
+            <p class="text-slate-600 mb-6">
+                Access the project's file system through global functions.
+            </p>
+
+            <div class="space-y-4">
+                <div class="border rounded-xl overflow-hidden">
+                    <div class="bg-slate-100 px-4 py-2 font-bold text-sm">Open a File</div>
+                    <div class="bg-slate-900 p-4">
+                        <pre class="text-sm text-green-400 font-mono"><code>// Opens file in editor
+window.openFile('index.html');</code></pre>
+                    </div>
+                </div>
+
+                <div class="border rounded-xl overflow-hidden">
+                    <div class="bg-slate-100 px-4 py-2 font-bold text-sm">Access Project Data</div>
+                    <div class="bg-slate-900 p-4">
+                        <pre class="text-sm text-green-400 font-mono"><code>// Project metadata is available globally
+console.log(PROJECT_DATA.id);
+console.log(PROJECT_DATA.name);
+console.log(PROJECT_DATA.project_uid);</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- UI API -->
+        <section id="ui-api" class="mb-16">
+            <h2 class="text-2xl font-black text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-palette text-pink-600"></i> UI API
+            </h2>
+            <p class="text-slate-600 mb-6">
+                Add custom UI elements to the editor.
+            </p>
+
+            <div class="space-y-4">
+                <div class="border rounded-xl overflow-hidden">
+                    <div class="bg-slate-100 px-4 py-2 font-bold text-sm">Add a Button to Header</div>
+                    <div class="bg-slate-900 p-4">
+                        <pre class="text-sm text-green-400 font-mono"><code>const header = document.querySelector('header');
+const btn = document.createElement('button');
+btn.innerHTML = '🚀 My Plugin';
+btn.className = 'px-3 py-1 bg-green-500 text-white rounded font-bold ml-2';
+btn.onclick = () => alert('Button clicked!');
+header.querySelector('.flex:last-child').appendChild(btn);</code></pre>
+                    </div>
+                </div>
+
+                <div class="border rounded-xl overflow-hidden">
+                    <div class="bg-slate-100 px-4 py-2 font-bold text-sm">Create a Floating Panel</div>
+                    <div class="bg-slate-900 p-4">
+                        <pre class="text-sm text-green-400 font-mono"><code>const panel = document.createElement('div');
+panel.innerHTML = `
+    &lt;div style="position:fixed;bottom:20px;right:20px;background:white;
+                padding:16px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.2);z-index:1000"&gt;
+        &lt;h3 style="font-weight:bold;margin-bottom:8px"&gt;My Panel&lt;/h3&gt;
+        &lt;p&gt;Custom plugin panel!&lt;/p&gt;
+    &lt;/div&gt;
+`;
+document.body.appendChild(panel);</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Examples -->
+        <section id="examples" class="mb-16">
+            <h2 class="text-2xl font-black text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-lightbulb text-orange-600"></i> Example Plugins
+            </h2>
+
+            <div class="grid gap-6">
+                <!-- Example 1 -->
+                <div class="border rounded-xl overflow-hidden">
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3 text-white font-bold">
+                        Word Counter Plugin
+                    </div>
+                    <div class="bg-slate-900 p-4">
+                        <pre class="text-sm text-green-400 font-mono overflow-x-auto"><code>// Word Counter - Shows word count in status bar
+const editor = ace.edit('editor');
+const counter = document.createElement('div');
+counter.className = 'fixed bottom-4 left-4 bg-slate-800 text-white px-3 py-1 rounded-full text-xs font-mono z-50';
+document.body.appendChild(counter);
+
+function updateCount() {
+    const text = editor.getValue();
+    const words = text.trim().split(/\s+/).filter(w => w).length;
+    const chars = text.length;
+    counter.textContent = `${words} words • ${chars} chars`;
+}
+
+editor.session.on('change', updateCount);
+updateCount();</code></pre>
+                    </div>
+                </div>
+
+                <!-- Example 2 -->
+                <div class="border rounded-xl overflow-hidden">
+                    <div class="bg-gradient-to-r from-purple-500 to-purple-600 px-4 py-3 text-white font-bold">
+                        Quick Comment Plugin
+                    </div>
+                    <div class="bg-slate-900 p-4">
+                        <pre class="text-sm text-green-400 font-mono overflow-x-auto"><code>// Toggle comments with Ctrl+/
+const editor = ace.edit('editor');
+
+editor.commands.addCommand({
+    name: 'toggleComment',
+    bindKey: { win: 'Ctrl-/', mac: 'Cmd-/' },
+    exec: function(ed) {
+        ed.toggleCommentLines();
+    }
+});
+
+console.log('✓ Quick Comment plugin loaded - use Ctrl+/');</code></pre>
+                    </div>
+                </div>
+
+                <!-- Example 3 -->
+                <div class="border rounded-xl overflow-hidden">
+                    <div class="bg-gradient-to-r from-green-500 to-green-600 px-4 py-3 text-white font-bold">
+                        Auto-Save Plugin
+                    </div>
+                    <div class="bg-slate-900 p-4">
+                        <pre class="text-sm text-green-400 font-mono overflow-x-auto"><code>// Auto-save every 30 seconds
+let lastSave = Date.now();
+
+setInterval(() => {
+    if (Date.now() - lastSave >= 30000) {
+        document.getElementById('save-btn').click();
+        lastSave = Date.now();
+        console.log('✓ Auto-saved at', new Date().toLocaleTimeString());
+    }
+}, 5000);
+
+console.log('✓ Auto-save enabled (every 30s)');</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Best Practices -->
+        <section id="best-practices" class="mb-16">
+            <h2 class="text-2xl font-black text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-check-circle text-green-600"></i> Best Practices
+            </h2>
+
+            <div class="space-y-4">
+                <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded">
+                    <p class="font-bold text-green-800">✓ Use try-catch</p>
+                    <p class="text-green-700 text-sm">Wrap your code in try-catch to prevent errors from breaking the
+                        editor.</p>
+                </div>
+
+                <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded">
+                    <p class="font-bold text-green-800">✓ Log to Console</p>
+                    <p class="text-green-700 text-sm">Use console.log() to help users know your plugin loaded
+                        successfully.</p>
+                </div>
+
+                <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded">
+                    <p class="font-bold text-green-800">✓ Check for Elements</p>
+                    <p class="text-green-700 text-sm">Always check if DOM elements exist before manipulating them.</p>
+                </div>
+
+                <div class="p-4 bg-red-50 border-l-4 border-red-500 rounded">
+                    <p class="font-bold text-red-800">✗ Don't Override Core Functions</p>
+                    <p class="text-red-700 text-sm">Avoid replacing window.openFile or other core functions - extend
+                        them instead.</p>
+                </div>
+
+                <div class="p-4 bg-red-50 border-l-4 border-red-500 rounded">
+                    <p class="font-bold text-red-800">✗ Don't Block the UI</p>
+                    <p class="text-red-700 text-sm">Use async/await or setTimeout for heavy operations to keep the
+                        editor responsive.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA -->
+        <div class="text-center py-12 border-t">
+            <h3 class="text-2xl font-black text-slate-800 mb-4">Ready to build?</h3>
+            <p class="text-slate-500 mb-6">Create your first plugin and share it with the community!</p>
+            <div class="flex justify-center gap-4">
+                <a href="/dashboard/plugins"
+                    class="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition">
+                    Create Plugin
+                </a>
+                <a href="/marketplace"
+                    class="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition">
+                    Browse Marketplace
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

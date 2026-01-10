@@ -1,0 +1,210 @@
+{% extends "dashboard/layout.html" %}
+{% block dashboard_content %}
+<div class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-3xl font-bold">My Projects</h1>
+        <p class="text-slate-500 text-sm mt-1">Build and publish awesome applications</p>
+    </div>
+    <a href="/dashboard/templates"
+        class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition flex items-center gap-2">
+        <i class="fas fa-plus"></i> New Project
+    </a>
+</div>
+
+
+
+
+<h2 class="text-2xl font-bold mb-4">My Code Projects</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for p in projects %}
+    <div class="bg-white border rounded-2xl overflow-hidden hover:shadow-xl transition group"
+        data-project-id="{{ p.id }}">
+        <!-- Preview Header -->
+        <div class="h-32 bg-slate-100 relative overflow-hidden">
+            {% if p.is_published_site %}
+            <iframe src="/site/{{ p.project_uid }}"
+                class="w-full h-full border-none pointer-events-none scale-[0.25] origin-top-left"
+                style="width: 400%; height: 400%"></iframe>
+            {% else %}
+            <div class="w-full h-full flex items-center justify-center text-slate-300">
+                <i class="fas fa-file-code text-4xl"></i>
+            </div>
+            {% endif %}
+
+            <!-- Status Badges -->
+            <div class="absolute top-2 right-2 flex gap-1">
+                {% if p.is_on_explore %}
+                <span class="px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full">
+                    <i class="fas fa-globe mr-1"></i>Explore
+                </span>
+                {% endif %}
+                {% if p.is_published_site %}
+                <span class="px-2 py-0.5 bg-blue-500 text-white text-[10px] font-bold rounded-full">
+                    <i class="fas fa-link mr-1"></i>Live
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="p-5">
+            <h3 class="text-lg font-bold mb-1 truncate">{{ p.name }}</h3>
+            <p class="text-slate-400 text-xs mb-4">{{ p.description or 'No description' }}</p>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-2 mb-3">
+                <a href="/editor/{{ p.id }}"
+                    class="flex-1 bg-blue-600 text-white py-2 text-center rounded-lg font-bold text-sm hover:bg-blue-700 transition">
+                    <i class="fas fa-edit mr-1"></i> Edit
+                </a>
+                {% if p.is_published_site %}
+                <a href="/site/{{ p.project_uid }}" target="_blank"
+                    class="bg-slate-100 text-slate-600 px-3 py-2 rounded-lg hover:bg-slate-200 transition"
+                    title="View Live">
+                    <i class="fas fa-external-link-alt"></i>
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- Publish Options -->
+            <div class="flex gap-2 pt-3 border-t">
+                <button onclick="togglePublish({{ p.id }}, {{ p.is_published_site or 0 }})"
+                    class="flex-1 text-xs py-2 rounded-lg font-bold transition {{ 'bg-blue-100 text-blue-600' if p.is_published_site else 'bg-slate-100 text-slate-500 hover:bg-blue-100 hover:text-blue-600' }}">
+                    <i class="fas fa-link mr-1"></i> {{ 'Published' if p.is_published_site else 'Publish' }}
+                </button>
+                <button onclick="toggleExplore({{ p.id }}, {{ p.is_on_explore or 0 }})"
+                    class="flex-1 text-xs py-2 rounded-lg font-bold transition {{ 'bg-green-100 text-green-600' if p.is_on_explore else 'bg-slate-100 text-slate-500 hover:bg-green-100 hover:text-green-600' }}">
+                    <i class="fas fa-globe mr-1"></i> {{ 'On Explore' if p.is_on_explore else 'Explore' }}
+                </button>
+                <button onclick="shareAsTemplate({{ p.id }}, {{ p.is_template or 0 }})"
+                    class="flex-1 text-xs py-2 rounded-lg font-bold transition {{ 'bg-purple-100 text-purple-600' if p.is_template else 'bg-slate-100 text-slate-500 hover:bg-purple-100 hover:text-purple-600' }}">
+                    <i class="fas fa-code-branch mr-1"></i> {{ 'Template' if p.is_template else 'Template' }}
+                </button>
+                <button onclick="deleteProject({{ p.id }})"
+                    class="text-xs px-3 py-2 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition"
+                    title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-span-full text-center py-20 text-slate-400 bg-slate-50 rounded-2xl border border-dashed">
+        <i class="fas fa-folder-open text-6xl mb-4 opacity-30"></i>
+        <p class="text-xl font-bold mb-2">No projects yet</p>
+        <p class="text-sm mb-6">Start building something awesome!</p>
+        <a href="/dashboard/templates" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">
+            <i class="fas fa-plus mr-2"></i>Create Your First Project
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+{% if platformers %}
+<div class="mt-12 mb-12">
+    <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+        <i class="fas fa-gamepad text-emerald-500"></i> My Platformer Games
+    </h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for p in platformers %}
+        <div class="bg-white border rounded-2xl overflow-hidden hover:shadow-xl transition group">
+            <div class="h-32 bg-slate-100 relative overflow-hidden flex items-center justify-center text-slate-300">
+                <i class="fas fa-mountain text-4xl"></i>
+                <div class="absolute top-2 right-2 flex gap-1">
+                    {% if p.is_on_explore %}
+                    <span class="px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full">
+                        <i class="fas fa-globe mr-1"></i>Explore
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="p-5">
+                <h3 class="text-lg font-bold mb-1 truncate">{{ p.name }}</h3>
+                <p class="text-slate-400 text-xs mb-4">Platformer Level</p>
+                <div class="flex gap-2 mb-3">
+                    <a href="/dashboard/platformer-builder?id={{ p.id }}"
+                        class="flex-1 bg-emerald-600 text-white py-2 text-center rounded-lg font-bold text-sm hover:bg-emerald-700 transition">
+                        <i class="fas fa-edit mr-1"></i> Edit
+                    </a>
+                </div>
+                <div class="flex gap-2 pt-3 border-t">
+                    <button onclick="togglePlatformerKey({{ p.id }}, {{ p.is_on_explore or 0 }})"
+                        class="flex-1 text-xs py-2 rounded-lg font-bold transition {{ 'bg-green-100 text-green-600' if p.is_on_explore else 'bg-slate-100 text-slate-500 hover:bg-green-100 hover:text-green-600' }}">
+                        <i class="fas fa-globe mr-1"></i> {{ 'On Explore' if p.is_on_explore else 'Publish' }}
+                    </button>
+                    <button onclick="deletePlatformer({{ p.id }})"
+                        class="text-xs px-3 py-2 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<script>
+    async function togglePublish(id, current) {
+        const res = await fetch(`/api/project/${id}/publish`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            if (data.is_published) {
+                alert(`Published! Your project is live at: ${location.origin}${data.url}`);
+            }
+            location.reload();
+        }
+    }
+
+    async function toggleExplore(id, current) {
+        const action = current ? 'remove from' : 'share to';
+        if (!confirm(`${current ? 'Remove' : 'Share'} this project ${action} Explore?`)) return;
+
+        const res = await fetch(`/api/project/${id}/explore`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
+        }
+    }
+
+    async function deleteProject(id) {
+        if (!confirm('Delete this project? This cannot be undone.')) return;
+        await fetch(`/api/project/${id}/delete`, { method: 'POST' });
+        location.reload();
+    }
+
+    async function shareAsTemplate(id, current) {
+        if (current) {
+            alert('This project is already shared as a template in the Marketplace!');
+            return;
+        }
+        const description = prompt('Enter a description for your template (visible in Marketplace):');
+        if (description === null) return;
+
+        const res = await fetch(`/api/project/${id}/share-template`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('Template shared! Your project is now available in the Marketplace for others to remix.');
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to share template');
+        }
+    }
+    async function togglePlatformerKey(id, current) {
+        const action = current ? 'remove from' : 'share to';
+        if (!confirm(`${current ? 'Remove' : 'Share'} this game ${action} Explore?`)) return;
+        const res = await fetch(`/api/platformer/${id}/publish`, { method: 'POST' });
+        if ((await res.json()).success) location.reload();
+    }
+
+    async function deletePlatformer(id) {
+        if (!confirm('Delete this game?')) return;
+        await fetch(`/api/platformer/${id}/delete`, { method: 'POST' });
+        location.reload();
+    }
+</script>
+{% endblock %}

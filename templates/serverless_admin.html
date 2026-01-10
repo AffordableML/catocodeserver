@@ -1,0 +1,104 @@
+{% extends "layout.html" %}
+{% block title %}DB Admin - {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="bg-gray-50 min-h-screen py-10 px-4">
+    <div class="max-w-4xl mx-auto">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <a href="{{ url_for('dashboard') }}"
+                    class="text-sm text-gray-500 hover:text-primary mb-2 inline-block"><i class="fas fa-arrow-left"></i>
+                    Back to Dashboard</a>
+                <h1 class="text-3xl font-extrabold text-gray-900">{{ project.name }} <span
+                        class="text-gray-400 font-normal">Database</span></h1>
+                <p class="text-sm text-gray-500 mt-1">Manage serverless KV store entries.</p>
+            </div>
+            <div class="bg-white px-4 py-2 rounded-lg border shadow-sm">
+                <span class="text-xs font-bold text-gray-500 uppercase">Records</span>
+                <p class="text-2xl font-bold text-primary" id="record-count">{{ kv_count }}</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 border-b border-gray-100 bg-gray-50/50 flex gap-4">
+                <input type="text" id="new-key" placeholder="Key"
+                    class="flex-1 px-3 py-2 border rounded-lg focus:ring-2 ring-primary outline-none">
+                <input type="text" id="new-val" placeholder="Value"
+                    class="flex-[2] px-3 py-2 border rounded-lg focus:ring-2 ring-primary outline-none">
+                <button onclick="upsertKV()"
+                    class="px-6 py-2 bg-primary text-white font-bold rounded-lg hover:bg-blue-600 transition">Add /
+                    Update</button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-gray-600">
+                    <thead class="bg-gray-50 text-xs uppercase font-semibold text-gray-500">
+                        <tr>
+                            <th class="px-6 py-3">Key</th>
+                            <th class="px-6 py-3">Value</th>
+                            <th class="px-6 py-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="kv-list" class="divide-y divide-gray-100">
+                        <tr>
+                            <td colspan="3" class="px-6 py-4 text-center">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const projectId = {{ project.id }};
+
+    async function loadKV() {
+        const res = await fetch(`/api/project/${projectId}/kv`);
+        const data = await res.json();
+        const tbody = document.getElementById('kv-list');
+        document.getElementById('record-count').innerText = data.length;
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-400">No records found. Add one above.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(row => `
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-3 font-mono font-medium text-gray-900">${row.key_name}</td>
+                <td class="px-6 py-3 font-mono text-xs w-full break-all">${row.value}</td>
+                <td class="px-6 py-3 text-right">
+                    <button onclick="deleteKV('${row.key_name}')" class="text-red-400 hover:text-red-600 font-bold px-2 py-1 rounded hover:bg-red-50">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function upsertKV() {
+        const key = document.getElementById('new-key').value;
+        const val = document.getElementById('new-val').value;
+        if (!key) return alert("Key is required");
+
+        await fetch(`/api/project/${projectId}/kv`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key, value: val })
+        });
+
+        document.getElementById('new-key').value = '';
+        document.getElementById('new-val').value = '';
+        loadKV();
+    }
+
+    async function deleteKV(key) {
+        if (!confirm(`Delete key "${key}"?`)) return;
+        await fetch(`/api/project/${projectId}/kv/${key}`, { method: 'DELETE' });
+        loadKV();
+    }
+
+    loadKV();
+</script>
+{% endblock %}

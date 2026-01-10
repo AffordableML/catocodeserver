@@ -1,0 +1,1016 @@
+{% extends "dashboard/layout.html" %}
+{% block title %}Platformer Builder - CatoCode{% endblock %}
+{% block content %}
+<style>
+    .builder {
+        display: grid;
+        grid-template-columns: 240px 1fr 300px;
+        gap: 0;
+        height: calc(100vh - 80px);
+    }
+
+    .panel {
+        background: #fff;
+        border-right: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
+
+    .panel-header {
+        padding: 10px 14px;
+        border-bottom: 1px solid #e2e8f0;
+        font-weight: bold;
+        font-size: 12px;
+        background: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .tile-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 4px;
+        padding: 10px;
+    }
+
+    .tile {
+        width: 36px;
+        height: 36px;
+        border-radius: 4px;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: all 0.1s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        position: relative;
+        background-size: cover;
+        image-rendering: pixelated;
+    }
+
+    .tile:hover {
+        transform: scale(1.1);
+        z-index: 10;
+    }
+
+    .tile.selected {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+    }
+
+    .scene-area {
+        background: #1e293b;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .scene-toolbar {
+        padding: 8px 12px;
+        background: #0f172a;
+        border-bottom: 1px solid #334155;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .scene-toolbar button,
+    .scene-toolbar select {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 11px;
+    }
+
+    .btn-play {
+        background: #22c55e;
+        color: white;
+    }
+
+    .btn-save {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-publish {
+        background: #8b5cf6;
+        color: white;
+    }
+
+    .btn-unpublish {
+        background: #ef4444;
+        color: white;
+    }
+
+    .scene-container {
+        flex: 1;
+        overflow: auto;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #0f172a;
+    }
+
+    #level-canvas {
+        image-rendering: pixelated;
+        cursor: crosshair;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .level-item {
+        padding: 8px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        font-size: 12px;
+        color: #334155;
+    }
+
+    .level-item:hover {
+        background: #f8fafc;
+    }
+
+    .level-item.active {
+        background: #eff6ff;
+        border-left: 3px solid #3b82f6;
+        color: #1e40af;
+    }
+
+    .prop-row {
+        margin-bottom: 10px;
+    }
+
+    .prop-row label {
+        font-size: 11px;
+        color: #64748b;
+        display: block;
+        margin-bottom: 3px;
+        font-weight: 600;
+    }
+
+    .prop-row input,
+    .prop-row select,
+    .prop-row textarea {
+        width: 100%;
+        padding: 6px;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        font-size: 11px;
+    }
+
+    /* Custom Texture UI */
+    .texture-slot {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px;
+        background: #f8fafc;
+        border-radius: 6px;
+        margin-bottom: 4px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .texture-preview {
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        background: #ccc;
+        background-size: cover;
+        image-rendering: pixelated;
+        flex-shrink: 0;
+    }
+
+    .texture-name {
+        flex: 1;
+        font-size: 11px;
+        font-weight: bold;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Modal */
+    .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+</style>
+
+<div class="builder">
+    <!-- Left Panel: Tiles & Textures -->
+    <div class="panel">
+        <div class="panel-header"><i class="fas fa-th"></i> Tiles</div>
+        <div class="tile-grid" id="tile-palette"></div>
+
+        <div class="panel-header"><i class="fas fa-paint-brush"></i> Custom Textures</div>
+        <div style="padding:10px; flex:1; overflow-y:auto;">
+            <p class="text-xs text-slate-500 mb-2">Click edit to draw/upload texture for any tile.</p>
+            <div id="texture-list"></div>
+        </div>
+
+        <div class="panel-header"><i class="fas fa-user"></i> Player</div>
+        <div style="padding:10px;">
+            <div class="flex gap-2 items-center mb-2">
+                <canvas id="player-preview" width="32" height="32"
+                    style="border:1px solid #e2e8f0; border-radius:4px; image-rendering:pixelated;"></canvas>
+                <button onclick="openPixelArt('player')"
+                    class="flex-1 bg-blue-100 text-blue-600 hover:bg-blue-200 py-1 rounded text-xs font-bold">Edit
+                    Sprite</button>
+            </div>
+            <div class="prop-row">
+                <label>Player Speed</label>
+                <input type="range" id="player-speed" min="2" max="12" step="0.5" value="5"
+                    oninput="updateSpeedDisplay()">
+                <span id="speed-val" class="text-xs text-slate-500">5</span>
+            </div>
+            <div class="prop-row">
+                <label>Jump Power</label>
+                <input type="range" id="jump-power" min="8" max="20" step="1" value="12" oninput="updateJumpDisplay()">
+                <span id="jump-val" class="text-xs text-slate-500">12</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Center: Scene -->
+    <div class="scene-area">
+        <div class="scene-toolbar">
+            <button class="btn-play" onclick="playGame()"><i class="fas fa-play mr-1"></i> Play</button>
+            <button class="btn-save" onclick="saveGame()"><i class="fas fa-save mr-1"></i> Save</button>
+            {% if game_data %}
+            <button id="btn-publish" class="btn-publish" onclick="togglePublish()">
+                <i class="fas fa-globe mr-1"></i> Publish
+            </button>
+            {% endif %}
+
+            <div class="h-6 w-px bg-slate-600 mx-1"></div>
+
+            <span class="text-xs font-bold text-slate-300">Zoom:</span>
+            <input type="range" id="zoom-slider" min="0.5" max="3" step="0.1" value="1" style="width:80px"
+                oninput="setZoom(this.value)">
+            <span id="zoom-val" class="text-xs text-slate-400 w-8">100%</span>
+
+            <span class="flex-1"></span>
+            <span class="text-xs text-slate-400">Level <span id="current-level-num">1</span> • <span
+                    id="level-dim">60×30</span></span>
+        </div>
+        <div class="scene-container">
+            <canvas id="level-canvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Right Panel: Levels, Settings, SFX -->
+    <div class="panel" style="border-right:none;border-left:1px solid #e2e8f0;">
+        <div class="panel-header">
+            <span><i class="fas fa-layer-group"></i> Levels</span>
+            <button onclick="addLevel()" class="bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-200">+
+                Add</button>
+        </div>
+        <div id="level-list" style="min-height:60px; max-height:200px; overflow-y:auto; border:1px solid #e2e8f0;">
+        </div>
+
+        <div class="panel-header"><i class="fas fa-music"></i> Sound Effects</div>
+        <div style="padding:10px;">
+            <div class="prop-row">
+                <label>Background Music (MP3/URL)</label>
+                <input type="text" id="sfx-bgm" placeholder="https://..." onchange="updateSfx('bgm', this.value)">
+                <input type="file" id="file-bgm" accept="audio/*" class="mt-1" onchange="uploadSfx('bgm', this)">
+            </div>
+            <div class="prop-row">
+                <label>Key Pickup Sound</label>
+                <input type="text" id="sfx-key" placeholder="https://..." onchange="updateSfx('key', this.value)">
+                <input type="file" id="file-key" accept="audio/*" class="mt-1" onchange="uploadSfx('key', this)">
+            </div>
+            <div class="prop-row">
+                <label>Level Complete Sound</label>
+                <input type="text" id="sfx-win" placeholder="https://..." onchange="updateSfx('win', this.value)">
+                <input type="file" id="file-win" accept="audio/*" class="mt-1" onchange="uploadSfx('win', this)">
+            </div>
+        </div>
+
+        <div class="panel-header"><i class="fas fa-cog"></i> Settings</div>
+        <div style="padding:10px;">
+            <div class="prop-row">
+                <label>Game Title</label>
+                <input type="text" id="game-title" value="My Platformer">
+            </div>
+            <div class="prop-row">
+                <label>Gravity</label>
+                <input type="range" id="gravity" min="0.3" max="1.5" step="0.1" value="0.8">
+            </div>
+            <div class="prop-row">
+                <label>Background Type</label>
+                <select id="bg-select" onchange="setBg(this.value)">
+                    <option value="sky">Sky</option>
+                    <option value="night">Night</option>
+                    <option value="cave">Cave</option>
+                    <option value="forest">Forest</option>
+                    <option value="custom">Custom Image</option>
+                </select>
+                <button onclick="openPixelArt('bg')" id="btn-custom-bg"
+                    style="display:none; width:100%; margin-top:4px;" class="bg-slate-100 py-1 text-xs">Draw BG</button>
+            </div>
+            <div class="prop-row">
+                <label>Level Size</label>
+                <div class="flex gap-2">
+                    <input type="number" id="level-w" value="60" min="20" max="200" onchange="resizeLevel()">
+                    <input type="number" id="level-h" value="30" min="15" max="100" onchange="resizeLevel()">
+                </div>
+            </div>
+            <div class="prop-row">
+                <label>Camera View (blocks wide)</label>
+                <input type="range" id="viewport-width" min="10" max="40" step="1" value="20"
+                    oninput="updateViewportDisplay()">
+                <span id="viewport-val" class="text-xs text-slate-500">20 blocks</span>
+                <p class="text-xs text-slate-400 mt-1">How many blocks the player sees horizontally</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pixel Art Modal -->
+<div class="modal" id="pixel-modal">
+    <div class="modal-content">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-lg" id="pixel-title">Pixel Editor</h3>
+            <button onclick="closeModal()" class="text-2xl">&times;</button>
+        </div>
+        <div class="flex gap-2 mb-4">
+            <input type="color" id="pixel-color" value="#000000" class="w-10 h-10 cursor-pointer">
+            <button onclick="clearPixelCanvas()" class="px-3 py-1 bg-red-100 text-red-600 rounded">Clear</button>
+            <div class="flex-1"></div>
+            <label class="px-3 py-1 bg-slate-100 rounded cursor-pointer hover:bg-slate-200">
+                Upload <input type="file" hidden accept="image/*" onchange="uploadTextureFile(this)">
+            </label>
+            <button onclick="savePixelArt()" class="px-4 py-1 bg-blue-600 text-white rounded font-bold">Save</button>
+        </div>
+        <div class="flex justify-center bg-slate-100 p-4 rounded-xl overflow-auto">
+            <canvas id="pixel-canvas" width="256" height="256"
+                class="bg-white shadow-lg cursor-crosshair image-pixelated"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ===== CONFIG & STATE =====
+    const TILE_SIZE = 16; // Base size
+    let zoom = 1;
+    let gameId = {{ game_id or 'null' }};
+    let levels = [];
+    let currentLevel = 0;
+    let GRID_W = 60, GRID_H = 30;
+
+    // Assets
+    const tiles = [
+        { id: 'empty', name: 'Eraser', emoji: '🧹' },
+        { id: 'ground', name: 'Ground', color: '#8b5a2b' },
+        { id: 'grass', name: 'Grass', color: '#22c55e' },
+        { id: 'stone', name: 'Stone', color: '#64748b' },
+        { id: 'brick', name: 'Brick', color: '#dc2626' },
+        { id: 'wood', name: 'Wood', color: '#92400e' },
+        { id: 'ice', name: 'Ice', color: '#7dd3fc' },
+        { id: 'sand', name: 'Sand', color: '#fcd34d' },
+        { id: 'lava', name: 'Lava', color: '#f97316', emoji: '🔥' },
+        { id: 'water', name: 'Water', color: '#3b82f6', emoji: '💧' },
+        { id: 'spike', name: 'Spike', color: '#1e293b', emoji: '⚠️' },
+        { id: 'coin', name: 'Coin', color: '#fbbf24', emoji: '🪙' },
+        { id: 'diamond', name: 'Diamond', color: '#a855f7', emoji: '💎' },
+        { id: 'key', name: 'Key', color: '#eab308', emoji: '🔑' },
+        { id: 'lock', name: 'Lock', color: '#dc2626', emoji: '🔒' },
+        { id: 'door', name: 'Finish', color: '#7c3aed', emoji: '🏁' },
+        { id: 'spawn', name: 'Start', color: '#10b981', emoji: '🧍' },
+        { id: 'checkpoint', name: 'Flag', color: '#06b6d4', emoji: '🏳️' },
+        { id: 'spring', name: 'Spring', color: '#ec4899', emoji: '🔺' }
+    ];
+
+    // Stores data:base64 for custom textures
+    let textures = {};
+    let sounds = { bgm: null, key: null, win: null };
+    let playerSprite = null;
+    let customBg = null;
+    let bgType = 'sky';
+
+    let selectedTile = 'ground';
+    let isDrawing = false;
+    let pixelTarget = null; // 'player', 'bg', or tileId
+    let pixelCtx = document.getElementById('pixel-canvas').getContext('2d');
+
+    // ===== INITIALIZATION =====
+    function init() {
+        {% if game_data %} loadGameData({{ game_data| safe }}); {% else %} levels = [createEmptyLevel()]; {% endif %}
+    renderPalette();
+    renderTextureList();
+    renderLevelList();
+    resizeCanvas();
+    updateZoomDisplay();
+    }
+
+    function createEmptyLevel() {
+        return Array(GRID_H).fill(null).map(() => Array(GRID_W).fill('empty'));
+    }
+
+    function loadGameData(data) {
+        if (!data) return;
+        levels = (data.levels && data.levels.length > 0) ? data.levels : [createEmptyLevel()];
+        textures = data.textures || {};
+        sounds = data.sounds || { bgm: null, key: null, win: null };
+        playerSprite = data.playerSprite;
+        customBg = data.customBg;
+        bgType = data.bgType || 'sky';
+        GRID_W = data.width || 60;
+        GRID_H = data.height || 30;
+
+        document.getElementById('game-title').value = data.title || 'My Platformer';
+        document.getElementById('gravity').value = data.gravity || 0.8;
+        document.getElementById('player-speed').value = data.speed || 4;
+        document.getElementById('level-w').value = GRID_W;
+        document.getElementById('level-h').value = GRID_H;
+        document.getElementById('bg-select').value = bgType;
+        document.getElementById('sfx-bgm').value = sounds.bgm || '';
+        document.getElementById('sfx-key').value = sounds.key || '';
+        document.getElementById('sfx-win').value = sounds.win || '';
+        document.getElementById('viewport-width').value = data.viewportWidth || 20;
+        document.getElementById('player-speed').value = data.speed || 5;
+        document.getElementById('jump-power').value = data.jumpPower || 12;
+        updateViewportDisplay();
+        updateSpeedDisplay();
+        updateJumpDisplay();
+
+        if (playerSprite) {
+            let img = new Image();
+            img.onload = () => document.getElementById('player-preview').getContext('2d').drawImage(img, 0, 0, 32, 32);
+            img.src = playerSprite;
+        }
+    }
+
+    // ===== CANVAS DRAWING =====
+    const canvas = document.getElementById('level-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+        canvas.width = GRID_W * TILE_SIZE * zoom;
+        canvas.height = GRID_H * TILE_SIZE * zoom;
+        drawLevel();
+    }
+
+    const bgGradients = {
+        sky: ['#87ceeb', '#e0f2fe'], night: ['#1e1b4b', '#312e81'],
+        cave: ['#44403c', '#1c1917'], forest: ['#166534', '#14532d']
+    };
+
+    function drawLevel() {
+        ctx.save();
+        ctx.scale(zoom, zoom);
+
+        // BG
+        if (bgType === 'custom' && customBg) {
+            let img = new Image(); img.src = customBg;
+            if (img.complete) ctx.drawImage(img, 0, 0, GRID_W * TILE_SIZE, GRID_H * TILE_SIZE);
+            else img.onload = drawLevel;
+        } else {
+            let grad = ctx.createLinearGradient(0, 0, 0, GRID_H * TILE_SIZE);
+            let c = bgGradients[bgType] || bgGradients.sky;
+            grad.addColorStop(0, c[0]); grad.addColorStop(1, c[1]);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, GRID_W * TILE_SIZE, GRID_H * TILE_SIZE);
+        }
+
+        // Grid
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        for (let x = 0; x <= GRID_W; x++) { ctx.moveTo(x * TILE_SIZE, 0); ctx.lineTo(x * TILE_SIZE, GRID_H * TILE_SIZE); }
+        for (let y = 0; y <= GRID_H; y++) { ctx.moveTo(0, y * TILE_SIZE); ctx.lineTo(GRID_W * TILE_SIZE, y * TILE_SIZE); }
+        ctx.stroke();
+
+        // Tiles
+        const lvl = levels[currentLevel];
+        for (let y = 0; y < GRID_H; y++) {
+            for (let x = 0; x < GRID_W; x++) {
+                let tid = lvl[y][x];
+                if (tid === 'empty') continue;
+                let t = tiles.find(x => x.id === tid);
+
+                // Draw texture or color
+                if (textures[tid]) {
+                    let img = new Image(); img.src = textures[tid];
+                    ctx.drawImage(img, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                } else if (t && t.color) {
+                    ctx.fillStyle = t.color;
+                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
+
+                // Draw emoji
+                if (t && t.emoji) {
+                    ctx.font = '10px Arial';
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(t.emoji, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                }
+            }
+        }
+        ctx.restore();
+    }
+
+    // ===== TOOLS =====
+    function setZoom(val) {
+        zoom = parseFloat(val);
+        updateZoomDisplay();
+        resizeCanvas();
+    }
+    function updateZoomDisplay() {
+        document.getElementById('zoom-val').textContent = Math.round(zoom * 100) + '%';
+        document.getElementById('zoom-slider').value = zoom;
+    }
+
+    canvas.addEventListener('mousedown', e => { isDrawing = true; paint(e); });
+    window.addEventListener('mouseup', () => isDrawing = false);
+    canvas.addEventListener('mousemove', e => { if (isDrawing) paint(e); });
+
+    function paint(e) {
+        const r = canvas.getBoundingClientRect();
+        const x = Math.floor((e.clientX - r.left) / (TILE_SIZE * zoom));
+        const y = Math.floor((e.clientY - r.top) / (TILE_SIZE * zoom));
+        if (x >= 0 && x < GRID_W && y >= 0 && y < GRID_H) {
+            levels[currentLevel][y][x] = selectedTile;
+            requestAnimationFrame(drawLevel);
+        }
+    }
+
+    // ===== UI RENDERERS =====
+    function renderPalette() {
+        document.getElementById('tile-palette').innerHTML = tiles.map(t => `
+        <div class="tile ${selectedTile === t.id ? 'selected' : ''}" 
+             style="${textures[t.id] ? 'background-image:url(' + textures[t.id] + ')' : 'background:' + (t.color || '#eee')}"
+             title="${t.name}" onclick="selectedTile='${t.id}';renderPalette()">
+            ${(!textures[t.id] && t.emoji) ? t.emoji : ''}
+        </div>
+    `).join('');
+    }
+
+    function renderTextureList() {
+        document.getElementById('texture-list').innerHTML = tiles.filter(t => t.id !== 'empty').map(t => `
+        <div class="texture-slot">
+            <div class="texture-preview" style="${textures[t.id] ? 'background-image:url(' + textures[t.id] + ')' : 'background:' + t.color}"></div>
+            <div class="texture-name">${t.name}</div>
+            <button onclick="openPixelArt('${t.id}')" class="text-xs bg-slate-200 px-2 py-1 rounded hover:bg-slate-300">Edit</button>
+            ${textures[t.id] ? `<button onclick="deleteTexture('${t.id}')" class="text-xs text-red-500 px-1">&times;</button>` : ''}
+        </div>
+    `).join('');
+    }
+
+    function renderLevelList() {
+        console.log('renderLevelList called, levels:', levels.length, 'currentLevel:', currentLevel);
+        const listEl = document.getElementById('level-list');
+        if (!listEl) { console.error('level-list element not found!'); return; }
+        listEl.innerHTML = levels.map((_, i) => `
+        <div class="level-item ${i === currentLevel ? 'active' : ''}" onclick="selectLevel(${i})">
+            <span class="font-bold w-6 text-center">${i + 1}</span>
+            <span class="flex-1">Level ${i + 1}</span>
+            ${levels.length > 1 ? `<button onclick="event.stopPropagation();deleteLevel(${i})" class="text-red-400 hover:text-red-600 px-1" title="Delete"><i class="fas fa-times"></i></button>` : ''}
+        </div>
+    `).join('');
+        document.getElementById('current-level-num').textContent = currentLevel + 1;
+    }
+
+    function selectLevel(i) {
+        currentLevel = i;
+        renderLevelList();
+        drawLevel();
+    }
+
+    function addLevel() {
+        console.log('addLevel called, current levels:', levels.length);
+        levels.push(createEmptyLevel());
+        currentLevel = levels.length - 1;
+        console.log('After add, levels:', levels.length, 'currentLevel:', currentLevel);
+        renderLevelList();
+        drawLevel();
+    }
+
+    function deleteLevel(i) {
+        if (levels.length <= 1) return alert('Cannot delete the only level!');
+        if (!confirm(`Delete Level ${i + 1}?`)) return;
+        levels.splice(i, 1);
+        if (currentLevel >= levels.length) currentLevel = levels.length - 1;
+        renderLevelList();
+        drawLevel();
+    }
+
+    // ===== PIXEL ART EDITOR =====
+    function openPixelArt(target) {
+        pixelTarget = target;
+        document.getElementById('pixel-modal').classList.add('active');
+        document.getElementById('pixel-title').textContent = (target === 'player' ? 'Draw Player' : target === 'bg' ? 'Draw Background' : 'Draw Tile: ' + target);
+        const canvas = document.getElementById('pixel-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Size config
+        let size = (target === 'bg') ? 256 : 32;
+        canvas.width = canvas.height = size;
+
+        // Load existing
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, size, size);
+        let existing = null;
+        if (target === 'player') existing = playerSprite;
+        else if (target === 'bg') existing = customBg;
+        else existing = textures[target];
+
+        if (existing) {
+            let img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, size, size); img.src = existing;
+        }
+    }
+    function closeModal() { document.getElementById('pixel-modal').classList.remove('active'); }
+
+    let pixelDraw = false;
+    const pCanvas = document.getElementById('pixel-canvas');
+    pCanvas.addEventListener('mousedown', e => { pixelDraw = true; drawPx(e); });
+    pCanvas.addEventListener('mouseup', () => pixelDraw = false);
+    pCanvas.addEventListener('mousemove', e => { if (pixelDraw) drawPx(e); });
+
+    function drawPx(e) {
+        const ctx = pCanvas.getContext('2d');
+        const r = pCanvas.getBoundingClientRect();
+        const size = (pixelTarget === 'bg') ? 4 : 2; // pixel brush size
+        const x = Math.floor((e.clientX - r.left) / size) * size;
+        const y = Math.floor((e.clientY - r.top) / size) * size;
+        ctx.fillStyle = document.getElementById('pixel-color').value;
+        ctx.fillRect(x, y, size, size);
+    }
+
+    function uploadTextureFile(input) {
+        if (input.files && input.files[0]) {
+            let reader = new FileReader();
+            reader.onload = e => {
+                let img = new Image();
+                img.onload = () => pCanvas.getContext('2d').drawImage(img, 0, 0, pCanvas.width, pCanvas.height);
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function savePixelArt() {
+        const data = pCanvas.toDataURL();
+        if (pixelTarget === 'player') {
+            playerSprite = data;
+            let img = new Image(); img.onload = () => document.getElementById('player-preview').getContext('2d').drawImage(img, 0, 0, 32, 32); img.src = data;
+        } else if (pixelTarget === 'bg') {
+            customBg = data;
+            bgType = 'custom';
+            document.getElementById('bg-select').value = 'custom';
+        } else {
+            textures[pixelTarget] = data;
+            renderPalette();
+            renderTextureList();
+        }
+        closeModal();
+        drawLevel();
+    }
+
+    function deleteTexture(id) {
+        delete textures[id];
+        renderPalette();
+        renderTextureList();
+        drawLevel();
+    }
+
+    // ===== SFX =====
+    function updateSfx(type, val) { sounds[type] = val; }
+    function uploadSfx(type, input) {
+        if (input.files[0]) {
+            let reader = new FileReader();
+            reader.onload = e => {
+                sounds[type] = e.target.result;
+                document.getElementById('sfx-' + type).value = "(Custom Audio Uploaded)";
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // ===== SAVE & PUBLISH =====
+    function getGamePayload() {
+        return {
+            id: gameId,
+            title: document.getElementById('game-title').value,
+            levels, textures, sounds, playerSprite, customBg, bgType,
+            width: GRID_W, height: GRID_H,
+            gravity: parseFloat(document.getElementById('gravity').value),
+            speed: parseFloat(document.getElementById('player-speed').value),
+            jumpPower: parseFloat(document.getElementById('jump-power').value),
+            viewportWidth: parseInt(document.getElementById('viewport-width').value)
+        };
+    }
+
+    function updateViewportDisplay() {
+        const val = document.getElementById('viewport-width').value;
+        document.getElementById('viewport-val').textContent = val + ' blocks';
+    }
+
+    function updateSpeedDisplay() {
+        const val = document.getElementById('player-speed').value;
+        document.getElementById('speed-val').textContent = val;
+    }
+
+    function updateJumpDisplay() {
+        const val = document.getElementById('jump-power').value;
+        document.getElementById('jump-val').textContent = val;
+    }
+
+    async function saveGame() {
+        const payload = getGamePayload();
+        const res = await fetch('/api/platformer/save', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const d = await res.json();
+        if (d.success) {
+            gameId = d.id;
+            alert('Saved successfully!');
+            if (window.location.search.indexOf('id=') === -1) {
+                window.history.pushState({}, '', '?id=' + d.id);
+            }
+        }
+    }
+
+    async function togglePublish() {
+        if (!gameId) return alert('Save first!');
+        const btn = document.getElementById('btn-publish');
+        const isPublished = btn.classList.contains('btn-unpublish');
+        const action = isPublished ? 'unpublish' : 'publish';
+
+        const res = await fetch(`/api/platformer/${gameId}/publish`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action })
+        });
+        if (res.ok) {
+            if (action === 'publish') {
+                btn.innerHTML = '<i class="fas fa-eye-slash mr-1"></i> Unpublish';
+                btn.className = 'btn-unpublish';
+                alert('Published to Explore!');
+            } else {
+                btn.innerHTML = '<i class="fas fa-globe mr-1"></i> Publish';
+                btn.className = 'btn-publish';
+                alert('Unpublished from Explore.');
+            }
+        }
+    }
+
+    // ===== PLAY GENERATOR =====
+    function playGame() {
+        const w = window.open('', '_blank', 'width=900,height=600');
+        const d = getGamePayload();
+
+        // Generate full HTML game
+        const html = `<!DOCTYPE html><html><head><title>${d.title}</title>
+<style>
+body{margin:0;background:#111;color:#fff;font-family:sans-serif;overflow:hidden;touch-action:none}
+canvas{display:block;margin:0 auto}
+.win-screen{position:fixed;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+.win-screen.show{display:flex}
+.win-screen h1{font-size:4em;margin:0;text-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.win-screen p{font-size:1.5em;opacity:0.9}
+.win-screen button{margin-top:30px;padding:15px 40px;font-size:1.2em;border:none;border-radius:50px;background:#fff;color:#667eea;cursor:pointer;font-weight:bold;transition:transform 0.2s}
+.win-screen button:hover{transform:scale(1.1)}
+.stats{display:flex;gap:30px;margin-top:20px}
+.stat{text-align:center}
+.stat-val{font-size:2em;font-weight:bold}
+</style>
+</head><body>
+<canvas id="c"></canvas>
+<div class="win-screen" id="win">
+    <h1>🎉 You Win! 🎉</h1>
+    <p>Congratulations on completing ${d.title}!</p>
+    <div class="stats">
+        <div class="stat"><div class="stat-val" id="final-coins">0</div>Coins</div>
+        <div class="stat"><div class="stat-val" id="final-diamonds">0</div>Diamonds</div>
+    </div>
+    <button onclick="restartGame()">Play Again</button>
+</div>
+<script>
+const G=${JSON.stringify(d)};
+const c=document.getElementById('c'); const ctx=c.getContext('2d');
+
+// Dynamic tile size based on viewport width setting
+const viewBlocks = G.viewportWidth || 20;
+let TS = 16; // Will be calculated on resize
+
+let lv=0, p={x:100,y:100,vx:0,vy:0,w:14,h:14,grounded:false}, keys={}, cam={x:0,y:0};
+let coins=0, diamonds=0, hasKey=false, checkpoint=null, spawn={x:50,y:50};
+let gameWon = false;
+let sfx={bgm:G.sounds.bgm?new Audio(G.sounds.bgm):null, key:G.sounds.key?new Audio(G.sounds.key):null, win:G.sounds.win?new Audio(G.sounds.win):null};
+if(sfx.bgm) sfx.bgm.loop=true;
+
+// ALL tile colors
+const COLORS = {
+    ground:'#8b5a2b', grass:'#22c55e', stone:'#64748b', brick:'#dc2626',
+    wood:'#92400e', ice:'#7dd3fc', sand:'#fcd34d', lava:'#f97316',
+    water:'#3b82f6', spike:'#1e293b', coin:'#fbbf24', diamond:'#a855f7',
+    key:'#eab308', lock:'#dc2626', door:'#7c3aed', spawn:'#10b981',
+    checkpoint:'#06b6d4', spring:'#ec4899'
+};
+
+function resize(){
+    c.width=window.innerWidth; 
+    c.height=window.innerHeight;
+    // Calculate tile size so viewBlocks fit horizontally
+    TS = Math.floor(c.width / viewBlocks);
+    if(TS < 8) TS = 8;
+    if(TS > 64) TS = 64;
+}
+window.onresize=resize; resize();
+document.onkeydown=e=>{keys[e.code]=1; if(sfx.bgm && sfx.bgm.paused) sfx.bgm.play().catch(()=>{});};
+document.onkeyup=e=>keys[e.code]=0;
+
+function reset(){
+    spawn={x:50,y:50};
+    for(let y=0;y<G.height;y++) for(let x=0;x<G.width;x++) if(G.levels[lv][y][x]=='spawn') spawn={x:x*TS,y:y*TS};
+    p.x=checkpoint?checkpoint.x:spawn.x; p.y=checkpoint?checkpoint.y:spawn.y; p.vx=0;p.vy=0;
+    p.w = TS-2; p.h = TS-2;
+    cam.x=Math.max(0,Math.min(p.x-c.width/2, G.width*TS-c.width));
+    cam.y=Math.max(0,Math.min(p.y-c.height/2, G.height*TS-c.height));
+}
+
+function showWin(){
+    gameWon = true;
+    document.getElementById('final-coins').textContent = coins;
+    document.getElementById('final-diamonds').textContent = diamonds;
+    document.getElementById('win').classList.add('show');
+    if(sfx.win) sfx.win.play();
+}
+
+function restartGame(){
+    // Reset all game state
+    lv = 0;
+    coins = 0;
+    diamonds = 0;
+    hasKey = false;
+    checkpoint = null;
+    gameWon = false;
+    // Reset level data (restore collected items)
+    for(let l=0; l<G.levels.length; l++){
+        // Note: items stay collected in current session, need deep copy for full reset
+    }
+    document.getElementById('win').classList.remove('show');
+    reset();
+    loop();
+}
+
+function loop() {
+    if(gameWon) return;
+    
+    // Physics
+    const speed = G.speed * (TS/16);
+    if(keys.ArrowLeft||keys.KeyA) p.vx = -speed;
+    else if(keys.ArrowRight||keys.KeyD) p.vx = speed;
+    else p.vx *= 0.8;
+    
+    const jumpPower = (G.jumpPower || 12) * (TS/16);
+    if((keys.ArrowUp||keys.KeyW||keys.Space) && p.grounded) { p.vy=-jumpPower; p.grounded=false; }
+    p.vy += G.gravity * (TS/16);
+    p.x += p.vx; handleCol(true);
+    p.y += p.vy; handleCol(false);
+    if(p.y > G.height*TS) reset();
+    
+    // Cam
+    let targetX = Math.max(0,Math.min(p.x-c.width/2, G.width*TS-c.width));
+    let targetY = Math.max(0,Math.min(p.y-c.height/2, G.height*TS-c.height));
+    cam.x += (targetX-cam.x)*0.1;
+    cam.y += (targetY-cam.y)*0.1;
+    
+    draw();
+    requestAnimationFrame(loop);
+}
+
+const SOLIDS=['ground','grass','stone','brick','wood','ice','sand','lock'];
+function handleCol(h) {
+    p.grounded=false;
+    let tx1=Math.floor(p.x/TS), tx2=Math.floor((p.x+p.w)/TS);
+    let ty1=Math.floor(p.y/TS), ty2=Math.floor((p.y+p.h)/TS);
+    
+    checkT(tx1,ty1); checkT(tx2,ty1); checkT(tx1,ty2); checkT(tx2,ty2);
+    
+    if(h) {
+        if((solid(tx1,ty1)||solid(tx1,ty2)) && p.vx<0) { p.x=(tx1+1)*TS; p.vx=0; }
+        if((solid(tx2,ty1)||solid(tx2,ty2)) && p.vx>0) { p.x=tx2*TS-p.w-0.1; p.vx=0; }
+    } else {
+        if((solid(tx1,ty1)||solid(tx2,ty1)) && p.vy<0) { p.y=(ty1+1)*TS; p.vy=0; }
+        if((solid(tx1,ty2)||solid(tx2,ty2)) && p.vy>0) { p.y=ty2*TS-p.h-0.1; p.vy=0; p.grounded=true; }
+    }
+}
+
+function solid(x,y) {
+    if(x<0||x>=G.width||y<0||y>=G.height) return true;
+    let t=G.levels[lv][y][x];
+    if(t=='lock' && hasKey) return false;
+    return SOLIDS.includes(t);
+}
+
+function checkT(x,y) {
+    let t=G.levels[lv][y]?.[x];
+    if(!t || t=='empty') return;
+    if(t=='coin') { G.levels[lv][y][x]='empty'; coins++; }
+    if(t=='diamond') { G.levels[lv][y][x]='empty'; diamonds++; }
+    if(t=='key') { G.levels[lv][y][x]='empty'; hasKey=true; if(sfx.key) sfx.key.play(); }
+    if(t=='door') { 
+        if(lv<G.levels.length-1) { lv++; checkpoint=null; reset(); if(sfx.win) sfx.win.play(); }
+        else showWin();
+    }
+    if(t=='checkpoint') checkpoint={x:x*TS,y:y*TS};
+    if(t=='spring') p.vy = -15 * (TS/16);
+    if(t=='lava'||t=='spike') reset();
+}
+
+function draw() {
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,c.width,c.height);
+    
+    // BG
+    if(G.customBg) { 
+        let img=new Image(); img.src=G.customBg; 
+        ctx.drawImage(img,0,0,c.width,c.height); 
+    } else {
+        const bgColors = {sky:'#87ceeb',night:'#1e1b4b',cave:'#44403c',forest:'#166534'};
+        ctx.fillStyle = bgColors[G.bgType]||'#87ceeb';
+        ctx.fillRect(0,0,c.width,c.height);
+    }
+    
+    ctx.save(); ctx.translate(-cam.x, -cam.y);
+    
+    // Tiles - draw with slight overlap to prevent gaps
+    ctx.imageSmoothingEnabled = false;
+    for(let y=0;y<G.height;y++) for(let x=0;x<G.width;x++) {
+        let t=G.levels[lv][y][x];
+        if(t=='empty') continue;
+        const tx = Math.floor(x*TS);
+        const ty = Math.floor(y*TS);
+        const tw = Math.ceil(TS) + 1; // Slight overlap
+        const th = Math.ceil(TS) + 1;
+        if(G.textures[t]) {
+            let img=new Image(); img.src=G.textures[t];
+            ctx.drawImage(img,tx,ty,tw,th);
+        } else {
+            ctx.fillStyle=COLORS[t]||'#fff'; 
+            ctx.fillRect(tx,ty,tw,th);
+        }
+    }
+    
+    // Player
+    // Draw player centered on hitbox
+    const drawX = p.x - 1;
+    const drawY = p.y - 1;
+    if(G.playerSprite) {
+        let img=new Image(); img.src=G.playerSprite;
+        ctx.drawImage(img,drawX,drawY,TS,TS);
+    } else {
+        ctx.fillStyle='lime'; ctx.fillRect(p.x,p.y,p.w,p.h);
+    }
+    ctx.restore();
+    
+    // GUI
+    ctx.fillStyle='white'; ctx.font='20px sans-serif';
+    ctx.fillText('Coins: '+coins+' | Diamonds: '+diamonds+(hasKey?' | 🔑':''), 20, 30);
+    ctx.fillText('Level: '+(lv+1)+'/'+G.levels.length, 20, 55);
+}
+
+reset(); loop();
+<\/script></body></html>`;
+        w.document.write(html);
+    }
+
+    function updateBgInput() {
+        const val = document.getElementById('bg-select').value;
+        document.getElementById('btn-custom-bg').style.display = (val === 'custom') ? 'block' : 'none';
+        bgType = val;
+        drawLevel();
+    }
+
+    document.getElementById('bg-select').addEventListener('change', updateBgInput);
+    init();
+</script>
+{% endblock %}

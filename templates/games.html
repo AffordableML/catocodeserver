@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1 style="text-align: center; margin-bottom: 40px;">CatoGames Arcade</h1>
+<div class="game-showcase">
+    {% for g in games %}
+    <a href="{{ url_for('public_view', project_uid=g.project_uid) }}" class="card" style="display: block;">
+        <div class="game-thumb"><i class="fas fa-gamepad"></i></div>
+        <h3>{{ g.name }}</h3>
+        <p style="color: var(--text-muted);">by {{ g.username }}</p>
+        <div style="margin-top: 10px; display: flex; gap: 15px; color: var(--primary);">
+            <span><i class="fas fa-heart"></i> {{ g.likes_count }}</span>
+            <span><i class="fas fa-code-branch"></i> {{ g.remix_count }}</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

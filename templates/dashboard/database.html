@@ -1,0 +1,242 @@
+{% extends "dashboard/layout.html" %}
+{% block title %}Database - CatoCode{% endblock %}
+{% block content %}
+<div class="flex gap-6 h-[calc(100vh-140px)]">
+    <!-- Project Selector Sidebar -->
+    <div class="w-64 bg-white rounded-2xl border p-4 flex flex-col">
+        <h2 class="font-bold text-lg mb-4 flex items-center gap-2">
+            <i class="fas fa-database text-blue-600"></i> Projects
+        </h2>
+        <div class="flex-1 overflow-y-auto space-y-2">
+            {% for p in projects %}
+            <a href="/dashboard/database?project={{ p.id }}"
+                class="block p-3 rounded-xl transition {{ 'bg-blue-50 border-blue-200 border' if selected_pid == p.id else 'hover:bg-slate-50 border border-transparent' }}">
+                <div class="font-bold text-sm truncate">{{ p.name }}</div>
+                <div class="text-xs text-slate-400">UID: {{ p.project_uid[:8] }}...</div>
+            </a>
+            {% else %}
+            <div class="text-slate-400 text-sm text-center py-8">
+                <i class="fas fa-folder-open text-3xl mb-2 opacity-30"></i>
+                <p>No projects yet</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Database Content -->
+    <div class="flex-1 bg-white rounded-2xl border p-6 flex flex-col">
+        {% if selected_pid %}
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-2xl font-black">Key-Value Database</h2>
+                <p class="text-slate-500 text-sm">Store and retrieve data for your project</p>
+            </div>
+            <div class="flex gap-3">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="search-input" placeholder="Search keys..."
+                        class="pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        oninput="filterData(this.value)">
+                </div>
+                <button onclick="showAddModal()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition">
+                    <i class="fas fa-plus mr-1"></i> Add Entry
+                </button>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="flex-1 overflow-y-auto">
+            <table class="w-full" id="data-table">
+                <thead class="sticky top-0 bg-slate-50">
+                    <tr class="text-left text-sm text-slate-500">
+                        <th class="py-3 px-4 font-bold rounded-tl-lg">Key</th>
+                        <th class="py-3 px-4 font-bold">Value</th>
+                        <th class="py-3 px-4 font-bold rounded-tr-lg w-32 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="data-body">
+                    {% for row in data %}
+                    <tr class="border-t data-row hover:bg-slate-50 transition" data-key="{{ row.key_name }}">
+                        <td class="py-3 px-4 font-mono text-sm font-bold text-blue-600">{{ row.key_name }}</td>
+                        <td class="py-3 px-4">
+                            <div class="max-w-md truncate font-mono text-sm value-cell"
+                                onclick="showValueModal('{{ row.key_name }}', this.dataset.value)"
+                                data-value="{{ row.value }}" title="Click to expand">
+                                {{ row.value[:100] }}{% if row.value|length > 100 %}...{% endif %}
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-right">
+                            <button onclick="editEntry('{{ row.key_name }}', '{{ row.value|e }}')"
+                                class="text-blue-500 hover:text-blue-700 px-2" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteEntry('{{ row.key_name }}')"
+                                class="text-red-400 hover:text-red-600 px-2" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr id="empty-row">
+                        <td colspan="3" class="text-center py-16 text-slate-400">
+                            <i class="fas fa-inbox text-5xl mb-4 opacity-30"></i>
+                            <p class="font-bold">No data stored yet</p>
+                            <p class="text-sm">Click "Add Entry" to store your first key-value pair</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Stats Footer -->
+        <div class="pt-4 border-t mt-4 flex items-center justify-between text-sm text-slate-500">
+            <span><i class="fas fa-layer-group mr-1"></i> {{ data|length }} entries</span>
+            <span>Project ID: {{ selected_pid }}</span>
+        </div>
+        {% else %}
+        <div class="flex-1 flex items-center justify-center">
+            <div class="text-center text-slate-400">
+                <i class="fas fa-arrow-left text-6xl mb-4 opacity-30"></i>
+                <p class="text-xl font-bold">Select a project</p>
+                <p class="text-sm">Choose a project from the sidebar to view its database</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div id="entry-modal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4"
+    onclick="if(event.target===this) closeModal()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+        <h3 id="modal-title" class="text-xl font-black mb-4">Add Entry</h3>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-bold text-slate-600 mb-1">Key</label>
+                <input type="text" id="entry-key"
+                    class="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                    placeholder="my_key">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-600 mb-1">Value</label>
+                <textarea id="entry-value" rows="4"
+                    class="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                    placeholder='{"name": "value"} or plain text'></textarea>
+                <p class="text-xs text-slate-400 mt-1">Supports JSON or plain text values</p>
+            </div>
+        </div>
+        <div class="flex gap-3 mt-6">
+            <button onclick="closeModal()"
+                class="flex-1 py-3 border rounded-xl font-bold hover:bg-slate-50 transition">Cancel</button>
+            <button onclick="saveEntry()"
+                class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition">
+                <i class="fas fa-save mr-1"></i> Save
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Value Viewer Modal -->
+<div id="value-modal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4"
+    onclick="if(event.target===this) closeValueModal()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div class="p-4 border-b flex items-center justify-between">
+            <h3 id="value-modal-title" class="font-bold text-lg"></h3>
+            <button onclick="closeValueModal()" class="text-slate-400 hover:text-slate-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-auto p-4">
+            <pre id="value-content"
+                class="font-mono text-sm bg-slate-50 p-4 rounded-xl whitespace-pre-wrap break-words"></pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    const projectId = {{ selected_pid or 'null' }};
+
+    function showAddModal() {
+        document.getElementById('modal-title').textContent = 'Add Entry';
+        document.getElementById('entry-key').value = '';
+        document.getElementById('entry-value').value = '';
+        document.getElementById('entry-key').disabled = false;
+        document.getElementById('entry-modal').classList.remove('hidden');
+        document.getElementById('entry-modal').classList.add('flex');
+    }
+
+    function editEntry(key, value) {
+        document.getElementById('modal-title').textContent = 'Edit Entry';
+        document.getElementById('entry-key').value = key;
+        document.getElementById('entry-value').value = value;
+        document.getElementById('entry-key').disabled = true;
+        document.getElementById('entry-modal').classList.remove('hidden');
+        document.getElementById('entry-modal').classList.add('flex');
+    }
+
+    function closeModal() {
+        document.getElementById('entry-modal').classList.add('hidden');
+        document.getElementById('entry-modal').classList.remove('flex');
+    }
+
+    async function saveEntry() {
+        const key = document.getElementById('entry-key').value.trim();
+        const value = document.getElementById('entry-value').value;
+        if (!key) { alert('Key is required'); return; }
+
+        const res = await fetch(`/api/database/${projectId}/set`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key, value })
+        });
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to save');
+        }
+    }
+
+    async function deleteEntry(key) {
+        if (!confirm(`Delete "${key}"?`)) return;
+        const res = await fetch(`/api/database/${projectId}/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key })
+        });
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
+        }
+    }
+
+    function filterData(query) {
+        const rows = document.querySelectorAll('.data-row');
+        const q = query.toLowerCase();
+        rows.forEach(row => {
+            const key = row.dataset.key.toLowerCase();
+            row.style.display = key.includes(q) ? '' : 'none';
+        });
+    }
+
+    function showValueModal(key, value) {
+        document.getElementById('value-modal-title').textContent = key;
+        const content = document.getElementById('value-content');
+        try {
+            const parsed = JSON.parse(value);
+            content.textContent = JSON.stringify(parsed, null, 2);
+        } catch {
+            content.textContent = value;
+        }
+        document.getElementById('value-modal').classList.remove('hidden');
+        document.getElementById('value-modal').classList.add('flex');
+    }
+
+    function closeValueModal() {
+        document.getElementById('value-modal').classList.add('hidden');
+        document.getElementById('value-modal').classList.remove('flex');
+    }
+</script>
+{% endblock %}

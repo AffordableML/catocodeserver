@@ -1,0 +1,33 @@
+/* Custom scrollbar for file tree */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Activity Bar Active State */
+.activity-tab.active {
+    border-left: 2px solid #3b82f6;
+}
+
+/* Editor Font override */
+#editor {
+    font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Ensure modal centers with Tailwind 'grid' class */
+#share-modal.grid {
+    display: grid;
+}

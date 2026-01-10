@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Visual Editor - {{ project.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        /* Event Sheet Styles */
+        .event-row {
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+            background: #fff;
+            min-height: 60px;
+        }
+
+        .event-condition {
+            flex: 1;
+            border-right: 1px solid #e5e7eb;
+            padding: 10px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .event-condition:hover {
+            background: #f9fafb;
+        }
+
+        .event-action {
+            flex: 1;
+            padding: 10px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .event-action:hover {
+            background: #f9fafb;
+        }
+
+        .event-text {
+            font-size: 13px;
+            font-family: 'Segoe UI', sans-serif;
+            color: #1f2937;
+        }
+
+        .param-highlight {
+            color: #2563eb;
+            font-weight: 600;
+        }
+
+        .add-event-btn {
+            width: 100%;
+            padding: 10px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 12px;
+            cursor: pointer;
+            border-bottom: 1px dashed #e5e7eb;
+        }
+
+        .add-event-btn:hover {
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+
+        /* Icon Bar */
+        .icon-bar-btn {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            transition: 0.2s;
+            cursor: pointer;
+        }
+
+        .icon-bar-btn:hover,
+        .icon-bar-btn.active {
+            color: white;
+            background: #374151;
+            border-left: 3px solid #3b82f6;
+        }
+
+        /* Asset Card */
+        .asset-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            cursor: grab;
+            background: white;
+            transition: 0.2s;
+        }
+
+        .asset-item:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .asset-item img {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            margin-bottom: 4px;
+        }
+
+        .asset-name {
+            font-size: 10px;
+            color: #4b5563;
+            text-align: center;
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body class="h-screen w-screen flex flex-col overflow-hidden bg-gray-100 text-sm font-sans selection:bg-blue-100">
+    <script>const PROJECT_ID = {{ project.id }};</script>
+
+    <!-- Header -->
+    <header class="h-12 bg-white border-b border-gray-200 flex items-center justify-between px-4 z-50 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="font-bold text-gray-800 text-lg flex items-center gap-2"><i
+                    class="fas fa-layer-group text-blue-600"></i> {{ project.name }}</div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="saveProject()"
+                class="px-4 py-1.5 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition font-medium text-xs flex items-center gap-2"><i
+                    class="fas fa-save"></i> Save</button>
+            <button onclick="runGame()"
+                class="px-5 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded font-bold text-xs flex items-center gap-2 shadow-sm"><i
+                    class="fas fa-play"></i> Preview</button>
+            <a href="{{ url_for('export_project', id=project.id) }}"
+                class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium text-xs flex items-center gap-2"><i
+                    class="fas fa-file-export"></i> Export</a>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Far Left Icon Bar -->
+        <div class="w-12 bg-gray-900 flex flex-col items-center py-2 shrink-0 z-40">
+            <div class="icon-bar-btn active" title="Event Sheet"><i class="fas fa-bolt"></i></div>
+            <div class="icon-bar-btn" title="Scene Editor"><i class="fas fa-film"></i></div>
+            <div class="icon-bar-btn" title="Extensions"><i class="fas fa-puzzle-piece"></i></div>
+            <div class="flex-1"></div>
+            <div class="icon-bar-btn" title="Settings"><i class="fas fa-cog"></i></div>
+        </div>
+
+        <!-- Left 50%: Event Sheet -->
+        <div class="w-1/2 flex flex-col border-r border-gray-300 bg-gray-50 overflow-hidden relative">
+            <div
+                class="bg-gray-100 border-b border-gray-200 px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider flex justify-between">
+                <span>Logic & Events</span>
+                <button class="text-blue-600 hover:underline" onclick="addEvent()">+ Add Event</button>
+            </div>
+
+            <div id="event-sheet" class="flex-1 overflow-y-auto content-start bg-white">
+                <!-- Events injected here -->
+                <div class="text-center text-gray-300 mt-20 italic pointer-events-none select-none">No events yet. Click
+                    "+ Add Event" to start logic.</div>
+            </div>
+        </div>
+
+        <!-- Right 50%: Split View -->
+        <div class="w-1/2 flex flex-col h-full">
+
+            <!-- Top: Scene Preview -->
+            <div class="h-1/2 relative bg-gray-200 border-b border-gray-300 overflow-hidden group">
+                <canvas id="scene-canvas" class="w-full h-full block cursor-crosshair"></canvas>
+                <div
+                    class="absolute top-2 left-2 bg-white/90 px-2 py-1 rounded text-xs font-bold shadow-sm border border-gray-200 pointer-events-none text-gray-500">
+                    Scene View</div>
+                <div
+                    class="absolute bottom-2 right-2 text-xs text-gray-500 bg-white/80 px-2 rounded hidden group-hover:block">
+                    Drag assets here to add objects</div>
+
+                <!-- Runtime Overlay (Hidden by default) -->
+                <div id="game-runtime-overlay" class="absolute inset-0 bg-black z-50 hidden flex flex-col">
+                    <div class="h-8 bg-gray-800 flex justify-end items-center px-2">
+                        <button onclick="stopGame()"
+                            class="text-white hover:text-red-400 text-xs font-bold uppercase"><i
+                                class="fas fa-stop mr-1"></i> Stop Preview</button>
+                    </div>
+                    <iframe id="game-frame" class="flex-1 border-none bg-white"></iframe>
+                </div>
+            </div>
+
+            <!-- Bottom: Assets -->
+            <div class="h-1/2 flex flex-col bg-white">
+                <div class="bg-gray-50 border-b border-gray-200 px-4 py-2 flex justify-between items-center">
+                    <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Assets & Objects</span>
+                    <div>
+                        <button onclick="document.getElementById('upload-asset').click()"
+                            class="bg-white border border-gray-300 px-2 py-1 rounded text-xs hover:bg-gray-100 text-gray-700 font-medium">+
+                            Import</button>
+                        <input type="file" id="upload-asset" hidden multiple accept="image/*">
+                    </div>
+                </div>
+                <div id="asset-browser"
+                    class="p-4 grid grid-cols-4 lg:grid-cols-5 gap-3 overflow-y-auto content-start flex-1">
+                    <!-- Assets injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Picker Modal -->
+    <div id="picker-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white w-[800px] h-[600px] rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <div class="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+                <h2 id="picker-title" class="text-lg font-bold text-gray-800">Select Condition</h2>
+                <button onclick="closePicker()" class="text-gray-400 hover:text-gray-600"><i
+                        class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="flex flex-1 overflow-hidden">
+                <!-- Categories -->
+                <div class="w-48 bg-gray-50 border-r border-gray-200 overflow-y-auto py-2" id="picker-categories">
+                    <!-- Categories injected JS -->
+                </div>
+                <!-- Options -->
+                <div class="flex-1 p-6 overflow-y-auto">
+                    <input type="text" id="picker-search" placeholder="Search..."
+                        class="w-full border border-gray-300 rounded px-3 py-2 mb-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <div id="picker-options" class="space-y-1">
+                        <!-- Options injected JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/visual_editor.js') }}"></script>
+</body>
+
+</html>

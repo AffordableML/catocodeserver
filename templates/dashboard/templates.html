@@ -1,0 +1,242 @@
+{% extends "dashboard/layout.html" %}
+{% block dashboard_content %}
+<h1 class="text-3xl font-bold mb-3">Templates</h1>
+<p class="text-slate-500 mb-8">Start with a pre-built template to jumpstart your project</p>
+
+<!-- Section: Visual Game Builders (NEW) -->
+<h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center gap-2">
+    <i class="fas fa-gamepad text-purple-500"></i> Visual Game Builders
+    <span class="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded-full ml-2">NEW</span>
+</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+    <!-- Platformer Builder -->
+    <a href="/dashboard/platformer-builder"
+        class="bg-gradient-to-br from-emerald-100 to-teal-100 border border-emerald-300 rounded-xl p-6 hover:shadow-xl transition group block md:col-span-2">
+        <div class="flex items-start gap-4">
+            <div
+                class="w-16 h-16 bg-emerald-200 text-emerald-600 rounded-xl flex items-center justify-center text-2xl group-hover:bg-emerald-600 group-hover:text-white transition">
+                <i class="fas fa-mountain"></i>
+            </div>
+            <div class="flex-1">
+                <h3 class="text-xl font-bold mb-2">Platformer Level Editor</h3>
+                <p class="text-slate-500 text-sm mb-4">Paint tiles to create platformer levels! Add coins, enemies,
+                    multiple levels, custom backgrounds, and export as standalone games.</p>
+                <span class="text-emerald-600 font-bold text-sm">Open Editor →</span>
+            </div>
+        </div>
+    </a>
+</div>
+
+<!-- Section: Basic Templates -->
+<h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center gap-2">
+    <i class="fas fa-file-code text-blue-500"></i> Basic Templates
+</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+    <!-- Blank -->
+    <div class="bg-white border rounded-xl p-6 hover:shadow-lg transition group relative">
+        <div
+            class="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 text-xl mb-4 group-hover:bg-blue-600 group-hover:text-white transition">
+            <i class="fas fa-file"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Blank Slate</h3>
+        <p class="text-slate-500 mb-6 text-sm">Minimal setup with index.html and server.py ready for backend logic.</p>
+        <button onclick="create('blank')"
+            class="w-full py-2 bg-slate-100 font-bold rounded-lg hover:bg-blue-600 hover:text-white transition">Use
+            Template</button>
+    </div>
+
+    <!-- Three.js -->
+    <div class="bg-white border rounded-xl p-6 hover:shadow-lg transition group">
+        <div
+            class="w-12 h-12 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-blue-600 group-hover:text-white transition">
+            <i class="fas fa-cube"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Three.js 3D</h3>
+        <p class="text-slate-500 mb-6 text-sm">Pre-configured 3D scene with rotation animation.</p>
+        <button onclick="create('threejs')"
+            class="w-full py-2 bg-slate-100 font-bold rounded-lg hover:bg-blue-600 hover:text-white transition">Use
+            Template</button>
+    </div>
+
+    <!-- Phaser -->
+    <div class="bg-white border rounded-xl p-6 hover:shadow-lg transition group">
+        <div
+            class="w-12 h-12 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-purple-600 group-hover:text-white transition">
+            <i class="fas fa-gamepad"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Phaser 2D</h3>
+        <p class="text-slate-500 mb-6 text-sm">Game engine starter for complex 2D mechanics.</p>
+        <button onclick="create('phaser')"
+            class="w-full py-2 bg-slate-100 font-bold rounded-lg hover:bg-purple-600 hover:text-white transition">Use
+            Template</button>
+    </div>
+
+    <!-- Kaboom -->
+    <div class="bg-white border rounded-xl p-6 hover:shadow-lg transition group">
+        <div
+            class="w-12 h-12 bg-green-50 text-green-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-green-600 group-hover:text-white transition">
+            <i class="fas fa-bomb"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Kaboom.js</h3>
+        <p class="text-slate-500 mb-6 text-sm">Fast and fun game library for platformers and RPGs.</p>
+        <button onclick="create('kaboom')"
+            class="w-full py-2 bg-slate-100 font-bold rounded-lg hover:bg-green-600 hover:text-white transition">Use
+            Template</button>
+    </div>
+</div>
+
+<!-- Section: Serverless Templates -->
+<h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center gap-2">
+    <i class="fas fa-server text-cyan-500"></i> Serverless Backend Templates
+</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+    <!-- Serverless API -->
+    <div
+        class="bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-200 rounded-xl p-6 hover:shadow-lg transition group relative">
+        <div class="absolute top-4 right-4">
+            <span class="px-2 py-1 text-xs font-bold bg-cyan-100 text-cyan-700 rounded-full">NEW</span>
+        </div>
+        <div
+            class="w-12 h-12 bg-cyan-100 text-cyan-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-cyan-600 group-hover:text-white transition">
+            <i class="fas fa-cloud"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Serverless API</h3>
+        <p class="text-slate-600 mb-6 text-sm">Simple backend function demo with database access and JSON responses.</p>
+        <button onclick="create('serverless_api')"
+            class="w-full py-2 bg-cyan-100 text-cyan-700 font-bold rounded-lg hover:bg-cyan-600 hover:text-white transition">Use
+            Template</button>
+    </div>
+
+    <!-- Serverless CRUD -->
+    <div
+        class="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6 hover:shadow-lg transition group relative">
+        <div class="absolute top-4 right-4">
+            <span class="px-2 py-1 text-xs font-bold bg-indigo-100 text-indigo-700 rounded-full">NEW</span>
+        </div>
+        <div
+            class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-indigo-600 group-hover:text-white transition">
+            <i class="fas fa-database"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">CRUD App</h3>
+        <p class="text-slate-600 mb-6 text-sm">Full Create, Read, Update, Delete app with serverless backend and styled
+            UI.</p>
+        <button onclick="create('serverless_crud')"
+            class="w-full py-2 bg-indigo-100 text-indigo-700 font-bold rounded-lg hover:bg-indigo-600 hover:text-white transition">Use
+            Template</button>
+    </div>
+
+    <!-- Serverless Auth -->
+    <div
+        class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-6 hover:shadow-lg transition group relative">
+        <div class="absolute top-4 right-4">
+            <span class="px-2 py-1 text-xs font-bold bg-emerald-100 text-emerald-700 rounded-full">NEW</span>
+        </div>
+        <div
+            class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-emerald-600 group-hover:text-white transition">
+            <i class="fas fa-user-lock"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Auth System</h3>
+        <p class="text-slate-600 mb-6 text-sm">Complete login/register flow with hashed passwords and secure storage.
+        </p>
+        <button onclick="create('serverless_auth')"
+            class="w-full py-2 bg-emerald-100 text-emerald-700 font-bold rounded-lg hover:bg-emerald-600 hover:text-white transition">Use
+            Template</button>
+    </div>
+</div>
+
+<!-- Section: Game Templates -->
+<h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center gap-2">
+    <i class="fas fa-gamepad text-pink-500"></i> Game Templates
+</h2>
+<p class="text-slate-500 text-sm mb-6">Complete games ready to customize - just change the variables at the top!</p>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+    <!-- Platformer -->
+    <div
+        class="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 hover:shadow-lg transition group relative">
+        <div
+            class="w-12 h-12 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-green-600 group-hover:text-white transition">
+            <i class="fas fa-running"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Platformer</h3>
+        <p class="text-slate-500 mb-6 text-sm">Jump, collect coins, and reach the goal!</p>
+        <button onclick="create('game_platformer')"
+            class="w-full py-2 bg-green-100 text-green-600 font-bold rounded-lg hover:bg-green-600 hover:text-white transition">Use
+            Template</button>
+    </div>
+
+    <!-- Snake -->
+    <div
+        class="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-6 hover:shadow-lg transition group relative">
+        <div
+            class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-blue-600 group-hover:text-white transition">
+            <i class="fas fa-worm"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Snake</h3>
+        <p class="text-slate-500 mb-6 text-sm">Classic snake game with growing tail!</p>
+        <button onclick="create('game_snake')"
+            class="w-full py-2 bg-blue-100 text-blue-600 font-bold rounded-lg hover:bg-blue-600 hover:text-white transition">Use
+            Template</button>
+    </div>
+
+    <!-- Flappy -->
+    <div
+        class="bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-6 hover:shadow-lg transition group relative">
+        <div
+            class="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-yellow-600 group-hover:text-white transition">
+            <i class="fas fa-dove"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Flappy Bird</h3>
+        <p class="text-slate-500 mb-6 text-sm">Tap to fly through the pipes!</p>
+        <button onclick="create('game_flappy')"
+            class="w-full py-2 bg-yellow-100 text-yellow-600 font-bold rounded-lg hover:bg-yellow-600 hover:text-white transition">Use
+            Template</button>
+    </div>
+
+    <!-- Pong -->
+    <div
+        class="bg-gradient-to-br from-slate-100 to-gray-100 border border-slate-200 rounded-xl p-6 hover:shadow-lg transition group relative">
+        <div
+            class="w-12 h-12 bg-slate-200 text-slate-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-slate-700 group-hover:text-white transition">
+            <i class="fas fa-table-tennis-paddle-ball"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Pong</h3>
+        <p class="text-slate-500 mb-6 text-sm">Classic 2-player paddle game vs AI!</p>
+        <button onclick="create('game_pong')"
+            class="w-full py-2 bg-slate-200 text-slate-600 font-bold rounded-lg hover:bg-slate-700 hover:text-white transition">Use
+            Template</button>
+    </div>
+</div>
+
+<script>
+    async function create(tid) {
+        const templateNames = {
+            'blank': 'Blank',
+            'threejs': 'Three.js',
+            'phaser': 'Phaser',
+            'kaboom': 'Kaboom',
+            'serverless_api': 'Serverless API',
+            'serverless_crud': 'CRUD',
+            'serverless_auth': 'Auth',
+            'game_platformer': 'Platformer',
+            'game_snake': 'Snake',
+            'game_flappy': 'Flappy',
+            'game_pong': 'Pong',
+            'game_blocks': 'Block Game'
+        };
+        const name = prompt("Project Name:", "My " + (templateNames[tid] || '') + " Game");
+        if (!name) return;
+        try {
+            const res = await fetch('/project/create', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, template: tid })
+            });
+            const d = await res.json();
+            if (d.success) window.location.href = '/editor/' + d.id;
+            else alert('Error creating project');
+        } catch (e) {
+            console.error(e);
+            alert('Server error');
+        }
+    }
+</script>
+{% endblock %}
