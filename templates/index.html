@@ -1,59 +1,588 @@
 {% extends "layout.html" %}
 {% block title %}CatoCode - Build Amazing Games & Websites{% endblock %}
 {% block content %}
-<div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-    <!-- Hero -->
-    <div class="max-w-6xl mx-auto px-6 py-20 text-center">
-        <h1 class="text-5xl md:text-7xl font-black text-white mb-6">
-            Build <span
-                class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Amazing</span> Games
-        </h1>
-        <p class="text-xl text-slate-300 mb-10 max-w-2xl mx-auto">
-            Create websites, games, and apps with our powerful online editor. Visual block coding, templates, and
-            instant publishing.
-        </p>
-        <div class="flex gap-4 justify-center flex-wrap">
-            {% if current_user.is_authenticated %}
-            <a href="/dashboard"
-                class="px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition text-lg">
-                Open Dashboard
-            </a>
-            {% else %}
-            <a href="/register"
-                class="px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition text-lg">
-                Get Started Free
-            </a>
-            <a href="/login"
-                class="px-8 py-4 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition text-lg">
-                Sign In
-            </a>
-            {% endif %}
-        </div>
-    </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap');
+    
+    * {
+        font-family: 'JetBrains Mono', monospace;
+    }
+    
+    #globe-container {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 60%;
+        height: 100vh;
+        z-index: 0;
+    }
+    
+    /* Dotted grid background */
+    .dotted-grid {
+        position: fixed;
+        inset: 0;
+        background-image: radial-gradient(circle, #e5e7eb 1px, transparent 1px);
+        background-size: 24px 24px;
+        z-index: 0;
+    }
+    
+    .content-wrapper {
+        position: relative;
+        z-index: 10;
+        min-height: 100vh;
+    }
+    
+    .char {
+        display: inline-block;
+        animation: charReveal 0.5s ease forwards;
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    
+    @keyframes charReveal {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .glitch {
+        position: relative;
+        animation: glitch 2s infinite;
+    }
+    
+    @keyframes glitch {
+        0%, 90%, 100% { transform: translate(0); }
+        92% { transform: translate(-2px, 1px); }
+        94% { transform: translate(2px, -1px); }
+        96% { transform: translate(-1px, 2px); }
+        98% { transform: translate(1px, -2px); }
+    }
+    
+    .gradient-fill {
+        background: linear-gradient(90deg, #000 0%, #333 50%, #000 100%);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: gradientMove 3s linear infinite;
+    }
+    
+    @keyframes gradientMove {
+        to { background-position: 200% center; }
+    }
+    
+    .btn-start {
+        position: relative;
+        background: #000;
+        color: #fff;
+        padding: 24px 64px;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        border: none;
+        cursor: pointer;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-start::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s ease;
+    }
+    
+    .btn-start:hover::before {
+        left: 100%;
+    }
+    
+    .btn-start:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 40px rgba(0,0,0,0.3);
+    }
+    
+    .marquee {
+        overflow: hidden;
+        white-space: nowrap;
+    }
+    
+    .marquee-inner {
+        display: inline-block;
+        animation: marquee 20s linear infinite;
+    }
+    
+    @keyframes marquee {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+    }
+    
+    .floating-word {
+        position: absolute;
+        font-size: 14px;
+        font-weight: 600;
+        color: #000;
+        opacity: 0.15;
+        animation: floatWord 8s ease-in-out infinite;
+    }
+    
+    @keyframes floatWord {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        50% { transform: translateY(-20px) rotate(5deg); }
+    }
+    
+    .nav-link {
+        position: relative;
+    }
+    
+    .nav-link::after {
+        content: '';
+        position: absolute;
+        bottom: -4px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: #000;
+        transition: width 0.3s ease;
+    }
+    
+    .nav-link:hover::after {
+        width: 100%;
+    }
+</style>
 
-    <!-- Features -->
-    <div class="max-w-6xl mx-auto px-6 py-20">
-        <div class="grid md:grid-cols-3 gap-8">
-            <div class="bg-white/10 backdrop-blur rounded-2xl p-8 text-center">
-                <div class="w-16 h-16 bg-blue-500 rounded-xl flex items-center justify-center mx-auto mb-4 text-3xl">🎮
+<div class="dotted-grid"></div>
+<div id="globe-container"></div>
+
+<div class="content-wrapper">
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-sm border-b border-gray-100">
+        <div class="flex items-center justify-between px-8 py-4 max-w-7xl mx-auto">
+            <a href="/" class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
+                    <i class="fas fa-code text-white text-sm"></i>
                 </div>
-                <h3 class="text-xl font-bold text-white mb-2">Game Templates</h3>
-                <p class="text-slate-300">Platformer, Snake, Flappy Bird, Pong - start with a template and customize!
-                </p>
+                <span class="text-lg font-bold text-black">CatoCode</span>
+            </a>
+            <div class="flex items-center gap-8">
+                <a href="/marketplace" class="nav-link text-sm text-gray-600 hover:text-black transition">MARKETPLACE</a>
+                <a href="/notebooks" class="nav-link text-sm text-gray-600 hover:text-black transition">NOTEBOOKS</a>
+                <a href="/explore" class="nav-link text-sm text-gray-600 hover:text-black transition">EXPLORE</a>
+                {% if current_user.is_authenticated %}
+                <a href="/dashboard" class="px-4 py-2 bg-black text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition">
+                    DASHBOARD
+                </a>
+                {% else %}
+                <a href="/login" class="text-sm text-gray-600 hover:text-black transition">LOGIN</a>
+                <a href="/register" class="px-4 py-2 bg-black text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition">
+                    SIGN UP
+                </a>
+                {% endif %}
             </div>
-            <div class="bg-white/10 backdrop-blur rounded-2xl p-8 text-center">
-                <div class="w-16 h-16 bg-purple-500 rounded-xl flex items-center justify-center mx-auto mb-4 text-3xl">
-                    🧩</div>
-                <h3 class="text-xl font-bold text-white mb-2">Visual Blocks</h3>
-                <p class="text-slate-300">Drag-drop code blocks to create games - no coding experience needed!</p>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="pt-32 pb-20 px-8 min-h-screen flex items-center">
+        <div class="max-w-2xl">
+            <!-- Animated tagline -->
+            <div class="mb-6 text-sm text-gray-400 tracking-widest" id="tagline"></div>
+            
+            <!-- Main headline -->
+            <h1 class="text-6xl md:text-8xl font-black text-black leading-tight mb-8" id="headline">
+                <span class="gradient-fill">BUILD</span><br>
+                <span class="gradient-fill">ANYTHING</span><br>
+                <span class="gradient-fill">IMAGINE</span>
+            </h1>
+            
+            <!-- Description -->
+            <p class="text-lg text-gray-500 mb-12 max-w-lg leading-relaxed" id="description">
+                The ultimate visual programming platform. Create stunning websites, epic games, and powerful apps — no code required.
+            </p>
+            
+            <!-- CTA Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4" id="cta">
+                <a href="/register" class="btn-start">
+                    START BUILDING
+                    <span class="ml-2">→</span>
+                </a>
+                <a href="/explore" class="px-8 py-4 border-2 border-black text-black font-semibold text-sm hover:bg-black hover:text-white transition">
+                    EXPLORE
+                </a>
             </div>
-            <div class="bg-white/10 backdrop-blur rounded-2xl p-8 text-center">
-                <div class="w-16 h-16 bg-green-500 rounded-xl flex items-center justify-center mx-auto mb-4 text-3xl">🚀
+            
+            <!-- Stats -->
+            <div class="mt-16 flex gap-12" id="stats">
+                <div>
+                    <div class="text-3xl font-bold text-black">50K+</div>
+                    <div class="text-xs text-gray-400 tracking-widest mt-1">PROJECTS</div>
                 </div>
-                <h3 class="text-xl font-bold text-white mb-2">Instant Publish</h3>
-                <p class="text-slate-300">Share your creations with the world in one click!</p>
+                <div>
+                    <div class="text-3xl font-bold text-black">100K+</div>
+                    <div class="text-xs text-gray-400 tracking-widest mt-1">BUILDERS</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-black">1M+</div>
+                    <div class="text-xs text-gray-400 tracking-widest mt-1">GAMES</div>
+                </div>
             </div>
         </div>
     </div>
+    
+    <!-- Floating words background -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden" style="z-index: 1;">
+        <span class="floating-word" style="top: 20%; left: 10%; animation-delay: 0s;">JAVASCRIPT</span>
+        <span class="floating-word" style="top: 35%; left: 5%; animation-delay: 1s;">PYTHON</span>
+        <span class="floating-word" style="top: 50%; left: 15%; animation-delay: 2s;">THREE.JS</span>
+        <span class="floating-word" style="top: 65%; left: 8%; animation-delay: 3s;">GAMES</span>
+        <span class="floating-word" style="top: 80%; left: 12%; animation-delay: 4s;">APPS</span>
+        <span class="floating-word" style="top: 25%; left: 25%; animation-delay: 5s;">WEBGL</span>
+        <span class="floating-word" style="top: 45%; left: 20%; animation-delay: 6s;">HTML5</span>
+        <span class="floating-word" style="top: 70%; left: 22%; animation-delay: 7s;">CANVAS</span>
+    </div>
+    
+    <!-- Marquee -->
+    <div class="border-y border-gray-100 py-4 bg-white/50 backdrop-blur-sm" style="z-index: 10; position: relative;">
+        <div class="marquee">
+            <div class="marquee-inner text-sm tracking-widest text-gray-300">
+                ★ CREATE GAMES ★ BUILD WEBSITES ★ VISUAL CODING ★ INSTANT PUBLISH ★ NO CODE NEEDED ★ CREATE GAMES ★ BUILD WEBSITES ★ VISUAL CODING ★ INSTANT PUBLISH ★ NO CODE NEEDED ★
+            </div>
+        </div>
+    </div>
+    
+    <!-- Features -->
+    <div class="py-24 bg-white" style="position: relative; z-index: 10;">
+        <div class="max-w-6xl mx-auto px-8">
+            <div class="grid md:grid-cols-3 gap-12">
+                <div class="group">
+                    <div class="w-12 h-12 border-2 border-black flex items-center justify-center mb-6 group-hover:bg-black group-hover:text-white transition">
+                        <i class="fas fa-gamepad text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-black mb-3">GAME ENGINE</h3>
+                    <p class="text-gray-500 leading-relaxed">
+                        Build addictive 2D games with our powerful Cato2D engine. Physics, animations, sound — all included.
+                    </p>
+                </div>
+                
+                <div class="group">
+                    <div class="w-12 h-12 border-2 border-black flex items-center justify-center mb-6 group-hover:bg-black group-hover:text-white transition">
+                        <i class="fas fa-cubes text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-black mb-3">VISUAL BLOCKS</h3>
+                    <p class="text-gray-500 leading-relaxed">
+                        Drag, drop, and code. Our intuitive block system makes programming accessible to everyone.
+                    </p>
+                </div>
+                
+                <div class="group">
+                    <div class="w-12 h-12 border-2 border-black flex items-center justify-center mb-6 group-hover:bg-black group-hover:text-white transition">
+                        <i class="fas fa-rocket text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-black mb-3">INSTANT PUBLISH</h3>
+                    <p class="text-gray-500 leading-relaxed">
+                        Share your creations with the world in one click. Free hosting, custom domains, and global CDN.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- CTA Section -->
+    <div class="py-24 bg-gray-50" style="position: relative; z-index: 10;">
+        <div class="max-w-3xl mx-auto px-8 text-center">
+            <h2 class="text-4xl md:text-5xl font-bold text-black mb-6 glitch">
+                READY TO CREATE?
+            </h2>
+            <p class="text-gray-500 mb-10">
+                Join thousands of creators building the future of interactive web experiences.
+            </p>
+            <a href="/register" class="btn-start inline-block">
+                GET STARTED FREE
+                <span class="ml-2">→</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="py-8 bg-white border-t border-gray-100" style="position: relative; z-index: 10;">
+        <div class="max-w-6xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2 text-gray-400 text-sm">
+                <i class="fas fa-code"></i>
+                <span>CatoCode © 2026</span>
+            </div>
+            <div class="flex gap-8 text-sm text-gray-400">
+                <a href="/marketplace" class="hover:text-black transition">MARKETPLACE</a>
+                <a href="/notebooks" class="hover:text-black transition">NOTEBOOKS</a>
+                <a href="/explore" class="hover:text-black transition">EXPLORE</a>
+                <a href="/sdk" class="hover:text-black transition">DOCS</a>
+            </div>
+        </div>
+    </footer>
 </div>
+
+<script>
+    // Three.js Globe
+    let scene, camera, renderer, globe, globeGroup;
+    let mouseX = 0, mouseY = 0;
+    
+    function initGlobe() {
+        const container = document.getElementById('globe-container');
+        
+        scene = new THREE.Scene();
+        scene.background = null; // Transparent
+        
+        camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 0, 5);
+        
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+        
+        // Globe group for rotation
+        globeGroup = new THREE.Group();
+        scene.add(globeGroup);
+        
+        // Main globe sphere - dark with subtle gradient
+        const globeGeometry = new THREE.SphereGeometry(1.5, 64, 64);
+        const globeMaterial = new THREE.MeshPhongMaterial({
+            color: 0x1a1a1a,
+            emissive: 0x0a0a0a,
+            specular: 0x222222,
+            shininess: 10,
+        });
+        globe = new THREE.Mesh(globeGeometry, globeMaterial);
+        globeGroup.add(globe);
+        
+        // Glow effect sphere (outer)
+        const glowGeometry = new THREE.SphereGeometry(1.65, 32, 32);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: 0x6366f1,
+            transparent: true,
+            opacity: 0.15,
+            side: THREE.BackSide,
+        });
+        const glowSphere = new THREE.Mesh(glowGeometry, glowMaterial);
+        globeGroup.add(glowSphere);
+        
+        // Outer glow
+        const outerGlowGeometry = new THREE.SphereGeometry(1.85, 32, 32);
+        const outerGlowMaterial = new THREE.MeshBasicMaterial({
+            color: 0xa855f7,
+            transparent: true,
+            opacity: 0.08,
+            side: THREE.BackSide,
+        });
+        const outerGlow = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial);
+        globeGroup.add(outerGlow);
+        
+        // Wireframe overlay
+        const wireGeometry = new THREE.SphereGeometry(1.52, 32, 32);
+        const wireMaterial = new THREE.MeshBasicMaterial({
+            color: 0x6366f1,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.08,
+        });
+        const wireSphere = new THREE.Mesh(wireGeometry, wireMaterial);
+        globeGroup.add(wireSphere);
+        
+        // Grid lines
+        const gridHelper = new THREE.PolarGridHelper(1.6, 16, 8, 64, 0x6366f1, 0xa855f7);
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.15;
+        globeGroup.add(gridHelper);
+        
+        // Points on globe
+        const pointsGeometry = new THREE.BufferGeometry();
+        const pointsCount = 400;
+        const positions = new Float32Array(pointsCount * 3);
+        
+        for (let i = 0; i < pointsCount; i++) {
+            const phi = Math.acos(-1 + (2 * i) / pointsCount);
+            const theta = Math.sqrt(pointsCount * Math.PI) * phi;
+            
+            const x = 1.5 * Math.cos(theta) * Math.sin(phi);
+            const y = 1.5 * Math.sin(theta) * Math.sin(phi);
+            const z = 1.5 * Math.cos(phi);
+            
+            positions[i * 3] = x;
+            positions[i * 3 + 1] = y;
+            positions[i * 3 + 2] = z;
+        }
+        
+        pointsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        
+        const pointsMaterial = new THREE.PointsMaterial({
+            color: 0x6366f1,
+            size: 0.025,
+            transparent: true,
+            opacity: 0.8,
+        });
+        
+        const points = new THREE.Points(pointsGeometry, pointsMaterial);
+        globeGroup.add(points);
+        
+        // Connecting lines (random connections between points)
+        const lineMaterial = new THREE.LineBasicMaterial({
+            color: 0x000000,
+            transparent: true,
+            opacity: 0.15,
+        });
+        
+        for (let i = 0; i < 50; i++) {
+            const startIdx = Math.floor(Math.random() * pointsCount);
+            const endIdx = Math.floor(Math.random() * pointsCount);
+            
+            if (startIdx !== endIdx) {
+                const startPos = new THREE.Vector3(
+                    positions[startIdx * 3],
+                    positions[startIdx * 3 + 1],
+                    positions[startIdx * 3 + 2]
+                );
+                const endPos = new THREE.Vector3(
+                    positions[endIdx * 3],
+                    positions[endIdx * 3 + 1],
+                    positions[endIdx * 3 + 2]
+                );
+                
+                const lineGeometry = new THREE.BufferGeometry().setFromPoints([startPos, endPos]);
+                const line = new THREE.Line(lineGeometry, lineMaterial);
+                globeGroup.add(line);
+            }
+        }
+        
+        // Orbit rings
+        const ringGeometry1 = new THREE.RingGeometry(1.8, 1.82, 64);
+        const ringMaterial = new THREE.MeshBasicMaterial({
+            color: 0x6366f1,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.2,
+        });
+        const ring1 = new THREE.Mesh(ringGeometry1, ringMaterial);
+        ring1.rotation.x = Math.PI / 2;
+        globeGroup.add(ring1);
+        
+        const ring2 = new THREE.RingGeometry(2.2, 2.22, 64);
+        const ringMaterial2 = new THREE.MeshBasicMaterial({
+            color: 0xa855f7,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.1,
+        });
+        const ring2Mesh = new THREE.Mesh(ring2, ringMaterial2);
+        ring2Mesh.rotation.x = Math.PI / 3;
+        globeGroup.add(ring2Mesh);
+        
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+        scene.add(ambientLight);
+        
+        // Main light - purple/indigo
+        const directionalLight = new THREE.DirectionalLight(0x6366f1, 1.2);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+        
+        // Secondary light - pink/purple
+        const pointLight = new THREE.PointLight(0xa855f7, 0.8);
+        pointLight.position.set(-5, -5, 5);
+        scene.add(pointLight);
+        
+        // Rim light
+        const rimLight = new THREE.PointLight(0x22d3ee, 0.5);
+        rimLight.position.set(0, -5, -5);
+        scene.add(rimLight);
+        
+        // Mouse interaction
+        document.addEventListener('mousemove', (event) => {
+            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            mouseY = (event.clientY / window.innerHeight) * 2 - 1;
+        });
+        
+        // Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    }
+    
+    function animateGlobe() {
+        requestAnimationFrame(animateGlobe);
+        
+        // Rotate globe
+        globeGroup.rotation.y += 0.002;
+        globeGroup.rotation.x += 0.001;
+        
+        // Mouse interaction
+        globeGroup.rotation.y += mouseX * 0.001;
+        globeGroup.rotation.x += mouseY * 0.001;
+        
+        renderer.render(scene, camera);
+    }
+    
+    // Text animations
+    function animateText() {
+        const tagline = document.getElementById('tagline');
+        const taglineText = '// THE FUTURE OF CODING';
+        tagline.innerHTML = '';
+        
+        taglineText.split('').forEach((char, i) => {
+            const span = document.createElement('span');
+            span.className = 'char';
+            span.textContent = char === ' ' ? '\u00A0' : char;
+            span.style.animationDelay = `${i * 0.05}s`;
+            tagline.appendChild(span);
+        });
+        
+        // Animate headline words
+        const headline = document.getElementById('headline');
+        headline.querySelectorAll('span').forEach((span, i) => {
+            span.style.animation = `charReveal 0.5s ease forwards`;
+            span.style.animationDelay = `${0.5 + i * 0.15}s`;
+            span.style.opacity = '0';
+        });
+        
+        // Animate description
+        const desc = document.getElementById('description');
+        desc.style.opacity = '0';
+        desc.style.transform = 'translateY(20px)';
+        desc.style.transition = 'all 0.5s ease';
+        setTimeout(() => {
+            desc.style.opacity = '1';
+            desc.style.transform = 'translateY(0)';
+        }, 1500);
+        
+        // Animate CTA
+        const cta = document.getElementById('cta');
+        cta.style.opacity = '0';
+        cta.style.transform = 'translateY(20px)';
+        cta.style.transition = 'all 0.5s ease';
+        setTimeout(() => {
+            cta.style.opacity = '1';
+            cta.style.transform = 'translateY(0)';
+        }, 1800);
+        
+        // Animate stats
+        const stats = document.getElementById('stats');
+        stats.style.opacity = '0';
+        stats.style.transform = 'translateY(20px)';
+        stats.style.transition = 'all 0.5s ease';
+        setTimeout(() => {
+            stats.style.opacity = '1';
+            stats.style.transform = 'translateY(0)';
+        }, 2000);
+    }
+    
+    // Initialize
+    initGlobe();
+    animateGlobe();
+    animateText();
+</script>
 {% endblock %}

@@ -82,3 +82,30 @@ CREATE TABLE platformer_games (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
+
+DROP TABLE IF EXISTS gamedev_games;
+CREATE TABLE gamedev_games (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    project_uid TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+);
+
+DROP TABLE IF EXISTS gamedev_plugins;
+CREATE TABLE gamedev_plugins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    code TEXT NOT NULL DEFAULT '',
+    cheatsheet_items TEXT DEFAULT '[]',
+    category TEXT DEFAULT 'other',
+    install_count INTEGER DEFAULT 0,
+    is_public INTEGER DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+);

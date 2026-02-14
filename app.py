@@ -7,6 +7,7 @@ import sys
 import os
 import secrets
 import math, datetime, json, random, re
+import openai
 from flask import Flask, render_template, request, jsonify, Response, redirect, url_for, flash, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
@@ -42,6 +43,23 @@ def init_db():
     with app.app_context():
         db = get_db()
         with app.open_resource('schema.sql', mode='r') as f: db.cursor().executescript(f.read())
+        db.commit()
+
+def ensure_gamedev_tables():
+    db = get_db()
+    try:
+        db.execute('SELECT 1 FROM gamedev_games LIMIT 1')
+    except:
+        db.execute('''CREATE TABLE IF NOT EXISTS gamedev_games (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            project_uid TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            code TEXT NOT NULL DEFAULT '',
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )''')
         db.commit()
 
 @app.cli.command('initdb')
@@ -497,6 +515,81 @@ def index(): return render_template('index.html')
 @app.route('/notebooks')
 def notebooks(): return render_template('notebooks.html')
 
+@app.route('/ai')
+def ai_builder():
+    api_key = os.environ.get('GOOGLE_AI_API_KEY', '')
+    recent = []
+    if current_user.is_authenticated:
+        projects = get_db().execute(
+            "SELECT name, created_at FROM projects WHERE user_id = ? ORDER BY created_at DESC LIMIT 6",
+            (current_user.id,)
+        ).fetchall()
+        for p in projects:
+            recent.append({
+                'name': p['name'],
+                'created': p['created_at'].split()[0] if p['created_at'] else 'Recently',
+                'type': 'project'
+            })
+    return render_template('ai.html', recent_projects=recent, last_prompt='')
+
+@app.route('/pixel-editor')
+@login_required
+def pixel_editor():
+    return render_template('pixel-editor.html')
+
+@app.route('/api/ai/generate', methods=['POST'])
+def ai_generate():
+    data = request.get_json()
+    prompt = data.get('prompt', '')
+    
+    if not prompt:
+        return jsonify({'error': 'No prompt provided'}), 400
+    
+    system_prompt = """You are an expert web developer. Generate complete, working HTML, CSS, and JavaScript code based on the user's request.
+
+Create a single HTML file with embedded CSS and JS that:
+1. Is fully functional and working
+2. Has modern, beautiful styling
+3. Uses clean, maintainable code
+4. Follows best practices
+
+Respond ONLY with valid JSON in this exact format:
+{"html": "complete HTML code", "css": "complete CSS code", "js": "complete JavaScript code"}
+
+Do NOT include any explanations or markdown. Just the JSON."""
+    
+    try:
+        client = openai.OpenAI(
+            api_key=os.environ.get('POE_API_KEY', ''),
+            base_url="https://api.poe.com/v1"
+        )
+        
+        chat = client.chat.completions.create(
+            model="kimi-k2.5",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=8000
+        )
+        
+        content = chat.choices[0].message.content
+        
+        # Parse JSON response
+        import re
+        json_match = re.search(r'\{[\s\S]*\}', content)
+        if json_match:
+            result = json.loads(json_match.group())
+        else:
+            result = json.loads(content)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"AI Generation Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/explore')
 def explore():
     projects = get_db().execute('''
@@ -544,8 +637,7 @@ def logout(): logout_user(); return redirect(url_for('index'))
 @login_required
 def dashboard():
     projects = get_db().execute('SELECT * FROM projects WHERE user_id = ? ORDER BY updated_at DESC', (current_user.id,)).fetchall()
-    platformers = get_db().execute('SELECT * FROM platformer_games WHERE user_id = ? ORDER BY updated_at DESC', (current_user.id,)).fetchall()
-    return render_template('dashboard/projects.html', projects=projects, platformers=platformers, section='projects')
+    return render_template('dashboard/projects.html', projects=projects, section='projects')
 
 @app.route('/dashboard/database')
 @login_required
@@ -1447,4 +1539,4 @@ def view_file(uid, path):
 
 if __name__ == '__main__':
     if not os.path.exists(DATABASE): init_db()
-    app.run(debug=True)
+    app.run(debug=True, port=8000)
