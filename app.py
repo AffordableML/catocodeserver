@@ -124,6 +124,13 @@ class DBWrapper:
         if not self._cursor:
             self._cursor = self._conn.cursor()
         return self._cursor
+    
+    @property
+    def lastrowid(self):
+        """Return the last inserted row ID"""
+        if self._cursor:
+            return self._cursor.lastrowid
+        return None
 
 @app.teardown_appcontext
 def close_connection(e): 
