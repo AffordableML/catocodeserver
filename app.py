@@ -362,6 +362,214 @@ def delete_platformer(gid):
     get_db().commit()
     return jsonify({'success': True})
 
+# ===== MELONJS GAME ENGINE =====
+@app.route('/melon-games')
+@login_required
+def melon_games():
+    """MelonJS game engine - list all games"""
+    games = get_db().execute('SELECT * FROM melon_games WHERE user_id = ? ORDER BY updated_at DESC', (current_user.id,)).fetchall()
+    return render_template('dashboard/melon_games.html', games=games, section='melon-games')
+
+@app.route('/melon-games/new')
+@login_required
+def melon_game_new():
+    """Create a new MelonJS game"""
+    return render_template('dashboard/melon_editor.html', game=None, section='melon-games')
+
+@app.route('/melon-games/<int:game_id>')
+@login_required
+def melon_game_edit(game_id):
+    """Edit an existing MelonJS game"""
+    game = get_db().execute('SELECT * FROM melon_games WHERE id = ? AND user_id = ?', (game_id, current_user.id)).fetchone()
+    if not game: return redirect('/melon-games')
+    return render_template('dashboard/melon_editor.html', game=game, section='melon-games')
+
+@app.route('/melon-games/play/<int:game_id>')
+def melon_game_play(game_id):
+    """Play a MelonJS game"""
+    game = get_db().execute('SELECT * FROM melon_games WHERE id = ?', (game_id,)).fetchone()
+    if not game: return "Game not found", 404
+    return render_template('melon_game_player.html', game=game)
+
+@app.route('/api/melon-games/save', methods=['POST'])
+@login_required
+def save_melon_game():
+    """Save a MelonJS game"""
+    data = request.get_json()
+    db = get_db()
+    game_id = data.get('id')
+    name = data.get('name', 'Untitled Game')
+    game_data = json.dumps(data.get('gameData', {}))
+    
+    if game_id:
+        db.execute('UPDATE melon_games SET name = ?, game_data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?',
+                   (name, game_data, game_id, current_user.id))
+        db.commit()
+        return jsonify({'success': True, 'id': game_id})
+    else:
+        uid = secrets.token_urlsafe(8)
+        db.execute('INSERT INTO melon_games (user_id, uid, name, game_data) VALUES (?, ?, ?, ?)',
+                   (current_user.id, uid, name, game_data))
+        db.commit()
+        new_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+        return jsonify({'success': True, 'id': new_id})
+
+@app.route('/api/melon-games/<int:game_id>/delete', methods=['POST'])
+@login_required
+def delete_melon_game(game_id):
+    """Delete a MelonJS game"""
+    get_db().execute('DELETE FROM melon_games WHERE id = ? AND user_id = ?', (game_id, current_user.id))
+    get_db().commit()
+    return jsonify({'success': True})
+
+@app.route('/api/melon-games/<int:game_id>/export', methods=['POST'])
+@login_required
+def export_melon_game(game_id):
+    """Export a MelonJS game as HTML"""
+    game = get_db().execute('SELECT * FROM melon_games WHERE id = ? AND user_id = ?', (game_id, current_user.id)).fetchone()
+    if not game: return jsonify({'error': 'Game not found'}), 404
+    
+    data = request.get_json()
+    format = data.get('format', 'html')  # html, zip
+    
+    game_data = json.loads(game['game_data']) if game['game_data'] else {}
+    
+    # Generate HTML export
+    html_content = generate_melonjs_export(game['name'], game_data)
+    
+    if format == 'zip':
+        import zipfile
+        import io
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w') as zf:
+            zf.writestr('index.html', html_content)
+            # Add sprites if any
+            if 'sprites' in game_data:
+                for sprite_name, sprite_data in game_data['sprites'].items():
+                    if sprite_data.get('data'):
+                        zf.writestr(f'sprites/{sprite_name}.png', base64.b64decode(sprite_data['data']))
+        buffer.seek(0)
+        return Response(
+            buffer.getvalue(),
+            mimetype='application/zip',
+            headers={'Content-Disposition': f'attachment; filename={game["name"].replace(" ", "_")}.zip'}
+        )
+    else:
+        return html_content
+
+def generate_melonjs_export(game_name, game_data):
+    """Generate a complete HTML file with MelonJS game"""
+    width = game_data.get('width', 800)
+    height = game_data.get('height', 600)
+    
+    # Generate game entities
+    entities_js = []
+    for entity in game_data.get('entities', []):
+        x = entity.get('x', 0)
+        y = entity.get('y', 0)
+        w = entity.get('width', 32)
+        h = entity.get('height', 32)
+        color = entity.get('color', '#ff0000')
+        entity_type = entity.get('type', 'rectangle')
+        
+        if entity_type == 'rectangle':
+            entities_js.append(f"""
+        // {entity.get('name', 'Rectangle')}
+        me.Entity.extend(
+            "{name}",
+            {{
+                init: function(x, y) {{
+                    this._super(me.Entity, "init", [x, y, {{
+                        width: {w},
+                        height: {h},
+                        shape: new me.Rectangle(0, 0, {w}, {h})
+                    }}]);
+                    this.renderable = new me.ColorLayer("{name}", "{color}").render();
+                }}
+            }}
+        );
+        new me.Entity({x}, {y}, {{name: "{name}"}});
+            """)
+        elif entity_type == 'sprite':
+            sprite_name = entity.get('spriteName', 'player')
+            entities_js.append(f"""
+        // Sprite: {entity.get('name', 'Sprite')}
+        me.Entity.extend(
+            "{name}",
+            {{
+                init: function(x, y) {{
+                    this._super(me.Entity, "init", [x, y, {{
+                        width: {w},
+                        height: {h},
+                        shape: new me.Rectangle(0, 0, {w}, {h})
+                    }}]);
+                    // Sprite rendering
+                }}
+            }}
+        );
+        new me.Entity({x}, {y}, {{name: "{name}"}});
+            """)
+    
+    entities_code = '\n'.join(entities_js) if entities_js else "// Add entities in the editor"
+    
+    html = f'''<!DOCTYPE html>
+<html>
+<head>
+    <title>{game_name}</title>
+    <script src="https://cdn.jsdelivr.net/npm/melonjs@8.3.0/build/melonjs.min.js"></script>
+    <style>
+        body {{
+            margin: 0;
+            padding: 0;
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: system-ui, sans-serif;
+        }}
+        #game-container {{
+            border: 4px solid #fff;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }}
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    <script>
+    // Game Configuration
+    var gameConfig = {{
+        width: {width},
+        height: {height},
+        parent: "game-container",
+        renderer: me.AUTO,
+        preferWebGL1: true
+    }};
+
+    // Initialize game
+    me.game = new me.Game(0, 0, gameConfig);
+
+    // Game Title
+    me.game.addComponent(new (me.GUI.extend({{
+        init: function() {{
+            this._super(me.GUI, "init");
+            this.font = new me.Font("Arial", 20, "#fff");
+        }},
+        draw: function(context) {{
+            this.font.draw(context, "{game_name}", 10, 10);
+        }}
+    }})));
+
+    // Add game entities
+    {entities_code}
+
+    // Start the game
+    me.boot();
+    </script>
+</body>
+</html>'''
+    return html
+
 
 # ===== MY GAMES DASHBOARD =====
 @app.route('/dashboard/games')
