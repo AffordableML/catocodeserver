@@ -15,7 +15,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 if (data.success) {
                     document.getElementById('like-count').textContent = data.new_count;
-                    likeBtn.classList.toggle('liked', data.liked); // Add a visual class if you want
+                    if (data.liked) {
+                        likeBtn.classList.add('text-red-500', 'border-red-200', 'bg-red-50');
+                    } else {
+                        likeBtn.classList.remove('text-red-500', 'border-red-200', 'bg-red-50');
+                    }
                 }
             } catch (error) {
                 console.error('Error liking project:', error);

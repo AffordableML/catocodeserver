@@ -10,7 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploadInput = document.getElementById('upload-input');
 
     let files = [];
+    let folders = new Set();
     let activeFile = null;
+    let isMarkdownPreview = false;
 
     // --- TAB SWITCHING ---
     const tabFiles = document.getElementById('tab-files');
@@ -34,8 +36,57 @@ document.addEventListener('DOMContentLoaded', () => {
         tabFiles.classList.add('text-slate-500');
     };
 
+    // --- MARKDOWN PREVIEW ---
+    window.toggleMarkdownPreview = () => {
+        if (!activeFile || !activeFile.path.endsWith('.md')) return;
+        
+        isMarkdownPreview = !isMarkdownPreview;
+        const btn = document.getElementById('md-preview-btn');
+        
+        if (isMarkdownPreview) {
+            btn.classList.add('bg-purple-600', 'text-white');
+            btn.classList.remove('bg-purple-100', 'text-purple-600');
+            btn.innerHTML = '<i class="fas fa-code mr-1"></i>Edit';
+            
+            const html = marked.parse(activeFile.content);
+            previewFrame.srcdoc = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5/github-markdown.min.css">
+                    <style>
+                        body { padding: 20px; max-width: 800px; margin: 0 auto; }
+                        .markdown-body { background: transparent; }
+                    </style>
+                </head>
+                <body class="markdown-body">
+                    ${html}
+                </body>
+                </html>
+            `;
+        } else {
+            btn.classList.remove('bg-purple-600', 'text-white');
+            btn.classList.add('bg-purple-100', 'text-purple-600');
+            btn.innerHTML = '<i class="fas fa-eye mr-1"></i>Preview';
+            updatePreview();
+        }
+    };
+
+    function checkMarkdownFile() {
+        const btn = document.getElementById('md-preview-btn');
+        if (activeFile && activeFile.path.endsWith('.md')) {
+            btn.classList.remove('hidden');
+        } else {
+            btn.classList.add('hidden');
+            isMarkdownPreview = false;
+        }
+    }
+
     // --- PREVIEW ---
     const updatePreview = () => {
+        if (isMarkdownPreview) return;
+        
         const index = files.find(f => f.path === 'index.html');
         if (!index) return;
         let content = index.content;
@@ -44,9 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
             let type = 'text/plain';
             if (f.path.endsWith('.css')) type = 'text/css';
             if (f.path.endsWith('.js')) type = 'application/javascript';
-            if (['png', 'jpg', 'svg'].includes(f.path.split('.').pop())) type = 'image/png';
+            if (['png', 'jpg', 'svg', 'webp', 'gif'].includes(f.path.split('.').pop())) type = 'image/png';
 
-            // Handle binary content
             let blob;
             if (f.content instanceof Uint8Array) blob = new Blob([f.content], { type });
             else blob = new Blob([f.content], { type });
@@ -57,11 +107,9 @@ document.addEventListener('DOMContentLoaded', () => {
             content = content.replace(new RegExp(path, 'g'), url);
         });
 
-        // FIXED: Inject the actual PROJECT_UID so serverless functions work in preview
         const projectUid = PROJECT_DATA.project_uid || 'demo';
         const uidScript = `<script>const PROJECT_UID="${projectUid}";</script>`;
 
-        // Insert UID script before </head> or at start of content
         if (content.includes('</head>')) {
             content = content.replace('</head>', uidScript + '</head>');
         } else if (content.includes('<body')) {
@@ -78,25 +126,26 @@ document.addEventListener('DOMContentLoaded', () => {
     let hasUnsavedChanges = false;
 
     editor.session.on('change', () => {
-        // Sync current file content
         if (activeFile && !activeFile.is_asset) {
             activeFile.content = editor.getValue();
         }
         hasUnsavedChanges = true;
 
-        // Debounce refresh to avoid too many updates
         clearTimeout(refreshTimeout);
         refreshTimeout = setTimeout(() => {
-            updatePreview();
+            if (!isMarkdownPreview) updatePreview();
         }, 500);
     });
 
-    // Manual refresh button
     document.getElementById('refresh').onclick = () => {
         if (activeFile && !activeFile.is_asset) {
             activeFile.content = editor.getValue();
         }
-        updatePreview();
+        if (isMarkdownPreview) {
+            toggleMarkdownPreview();
+        } else {
+            updatePreview();
+        }
     };
 
     // --- AUTOSAVE (every 30 seconds) ---
@@ -125,7 +174,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ files: payload })
             });
             hasUnsavedChanges = false;
-            // Show subtle feedback
             const btn = document.getElementById('save-btn');
             btn.textContent = 'Saved ✓';
             btn.classList.add('bg-green-600');
@@ -140,12 +188,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Autosave interval
     setInterval(silentSave, 30000);
-
 
     // --- EDITOR LOGIC ---
     window.openFile = (path) => {
+        if (isMarkdownPreview) {
+            isMarkdownPreview = false;
+            const btn = document.getElementById('md-preview-btn');
+            btn.classList.remove('bg-purple-600', 'text-white');
+            btn.classList.add('bg-purple-100', 'text-purple-600');
+            btn.innerHTML = '<i class="fas fa-eye mr-1"></i>Preview';
+        }
+        
         if (activeFile && !activeFile.is_asset) activeFile.content = editor.getValue();
         const f = files.find(x => x.path === path);
         if (!f) return;
@@ -162,39 +216,223 @@ document.addEventListener('DOMContentLoaded', () => {
             if (path.endsWith('.html')) mode = 'html';
             if (path.endsWith('.css')) mode = 'css';
             if (path.endsWith('.py')) mode = 'python';
+            if (path.endsWith('.md')) mode = 'markdown';
+            if (path.endsWith('.json')) mode = 'json';
             editor.session.setMode('ace/mode/' + mode);
         }
         renderFiles();
+        checkMarkdownFile();
     };
+
+    function getFileIcon(path) {
+        // kept for compatibility, but we now use SVG icons via getFileSVG
+        if (path.endsWith('.html')) return 'html';
+        if (path.endsWith('.css')) return 'css';
+        if (path.endsWith('.js')) return 'js';
+        if (path.endsWith('.py')) return 'py';
+        if (path.endsWith('.md')) return 'md';
+        if (path.endsWith('.json')) return 'json';
+        if (path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.gif')) return 'img';
+        return 'file';
+    }
+
+        function getFileSVG(path) {
+                const t = getFileIcon(path);
+                if (t === 'html') return `
+                        <svg width="20" height="20" viewBox="0 0 100 115" xmlns="http://www.w3.org/2000/svg">
+                            <path fill="#E34C26" d="M10 100L25 10h50L90 100L50 110z"/>
+                            <path fill="#EF652A" d="M50 110L75 100h13L50 15v95z"/>
+                            <text x="50" y="75" font-family="Arial, sans-serif" font-size="32" font-weight="bold" text-anchor="middle" fill="#fff">5</text>
+                        </svg>`;
+                if (t === 'css') return `
+                        <svg width="20" height="20" viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
+                            <path fill="#1572B6" d="M10 100L20 10h60L90 100L50 107z"/>
+                            <path fill="#33A9DC" d="M50 107L80 100h8L50 15v92z"/>
+                            <text x="50" y="70" font-family="Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#fff">CSS</text>
+                        </svg>`;
+                if (t === 'js') return `
+                        <svg width="20" height="20" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="128" height="128" rx="8" fill="#F7DF1E"/>
+                            <path d="M48 38h12v52h-12zM76 38h12v52h-12z" fill="#000" opacity="0"/>
+                            <text x="64" y="88" font-family="Arial, Helvetica, sans-serif" font-size="56" text-anchor="middle" fill="#000" font-weight="700">JS</text>
+                        </svg>`;
+                if (t === 'img') return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="24" height="24" rx="3" fill="#EC4899"/><path d="M4 16l4-5 3 4 5-6 4 7H4z" fill="#fff"/></svg>`;
+                return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="24" height="24" rx="3" fill="#E5E7EB"/><path d="M8 7h6l2 2v8a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7z" fill="#9CA3AF"/></svg>`;
+        }
+
+    function getFolderStructure() {
+        const root = {};
+        files.filter(f => !f.is_asset).forEach(f => {
+            const parts = f.path.split('/');
+            let current = root;
+            parts.forEach((part, i) => {
+                if (i === parts.length - 1) {
+                    current[part] = { __file: f };
+                } else {
+                    current[part] = current[part] || {};
+                    current = current[part];
+                }
+            });
+        });
+        return root;
+    }
 
     function renderFiles() {
         if (!fileTree) return;
+        
         const codeFiles = files.filter(f => !f.is_asset);
-        fileTree.innerHTML = codeFiles.map(f => `
-            <div onclick="openFile('${f.path}')" class="flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded mb-1 ${activeFile?.path === f.path ? 'bg-white shadow text-blue-600' : 'hover:bg-slate-200'}">
-                <i class="fas ${f.path.endsWith('.py') ? 'fa-server' : 'fa-file'} text-xs opacity-50"></i>
-                <span class="text-sm font-bold truncate">${f.path}</span>
-            </div>
-        `).join('');
-    }
+        const folderSet = new Set();
+        codeFiles.forEach(f => {
+            const parts = f.path.split('/');
+            if (parts.length > 1) {
+                parts.slice(0, -1).forEach(p => folderSet.add(p));
+            }
+        });
 
-    // FIXED: renderAssets null check
-    function renderAssets() {
-        if (!assetGrid) return;
-        const assets = files.filter(f => f.is_asset);
-        assetGrid.innerHTML = assets.map(f => {
-            const url = PROJECT_DATA.id ? `/view/${PROJECT_DATA.project_uid}/${f.path}` : '#';
-            return `
-            <div class="bg-slate-100 p-2 rounded-lg text-center border group relative">
-                <div class="h-16 flex items-center justify-center text-slate-400 text-xl"><i class="fas fa-image"></i></div>
-                <div class="text-[10px] font-bold truncate">${f.path}</div>
-                <button onclick="copyUrl('${url}')" class="absolute inset-0 bg-blue-600 text-white opacity-0 group-hover:opacity-100 transition rounded-lg text-[10px] font-bold">Copy URL</button>
+        const sortedFiles = [...codeFiles].sort((a, b) => {
+            const aDirs = a.path.split('/').length;
+            const bDirs = b.path.split('/').length;
+            if (aDirs !== bDirs) return aDirs - bDirs;
+            return a.path.localeCompare(b.path);
+        });
+
+        let html = '';
+        let lastDepth = 0;
+        
+        sortedFiles.forEach(f => {
+            const depth = f.path.split('/').length - 1;
+            const name = f.path.split('/').pop();
+            const isActive = activeFile?.path === f.path;
+            
+            if (depth > lastDepth) {
+                for (let i = lastDepth; i < depth; i++) {
+                    html += `<div class="ml-${i * 3} pl-3 py-0.5">`;
+                }
+            } else if (depth < lastDepth) {
+                for (let i = depth; i < lastDepth; i++) {
+                    html += `</div>`;
+                }
+            }
+            
+            html += `
+            <div onclick="openFile('${f.path}')" 
+                 class="flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded mb-1 ml-${depth * 3} ${isActive ? 'bg-blue-100 text-blue-700' : 'hover:bg-slate-200'} file-item"
+                 draggable="true"
+                 data-path="${f.path}">
+                <span class="inline-block" style="width:20px;display:inline-flex;align-items:center;justify-content:center">${getFileSVG(f.path)}</span>
+                <span class="text-sm font-medium truncate">${name}</span>
             </div>`;
-        }).join('');
-    }
-    window.copyUrl = (u) => { navigator.clipboard.writeText(location.origin + u); alert('URL Copied'); };
+            
+            lastDepth = depth;
+        });
 
-    // --- UPLOAD ---
+        for (let i = 0; i < lastDepth; i++) {
+            html += `</div>`;
+        }
+
+        fileTree.innerHTML = html;
+
+        // Add drag and drop handlers
+        document.querySelectorAll('.file-item').forEach(item => {
+            item.addEventListener('dragstart', handleDragStart);
+            item.addEventListener('dragover', handleDragOver);
+            item.addEventListener('drop', handleDrop);
+        });
+    }
+
+    // --- DRAG AND DROP ---
+    let draggedFile = null;
+
+    function handleDragStart(e) {
+        draggedFile = e.target.dataset.path;
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        const targetPath = e.target.closest('.file-item')?.dataset.path;
+        if (!targetPath || targetPath === draggedFile) return;
+
+        const sourceFile = files.find(f => f.path === draggedFile);
+        const targetFolder = targetPath.includes('/') ? targetPath.split('/').slice(0, -1).join('/') : '';
+        
+        const newPath = targetFolder ? `${targetFolder}/${sourceFile.path.split('/').pop()}` : sourceFile.path.split('/').pop();
+        
+        if (files.find(f => f.path === newPath)) {
+            alert('A file with that name already exists in this location');
+            return;
+        }
+
+        sourceFile.path = newPath;
+        if (activeFile?.path === draggedFile) {
+            activeFile.path = newPath;
+        }
+        
+        renderFiles();
+        hasUnsavedChanges = true;
+        alert(`Moved to: ${newPath}`);
+    }
+
+    // --- CREATE FILE/FOLDER ---
+    window.createNewFile = () => {
+        const name = prompt('Enter file name (e.g., styles.css, app.js, README.md):');
+        if (!name) return;
+        
+        const validExtensions = ['.html', '.css', '.js', '.py', '.md', '.json', '.txt', '.svg'];
+        const ext = '.' + name.split('.').pop();
+        
+        if (!validExtensions.includes(ext)) {
+            alert('Invalid file extension. Use: ' + validExtensions.join(', '));
+            return;
+        }
+        
+        const defaultContent = {
+            '.html': '<!DOCTYPE html>\n<html>\n<head>\n    <title>New Page</title>\n    <link rel="stylesheet" href="style.css">\n</head>\n<body>\n    \n</body>\n</html>',
+            '.css': '/* Add your styles here */\n',
+            '.js': '// Add your JavaScript here\n',
+            '.py': '# Python code here\n',
+            '.md': '# New Document\n\nWrite your markdown here...\n',
+            '.json': '{\n    \n}\n',
+            '.txt': '',
+            '.svg': '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">\n    \n</svg>'
+        };
+
+        files.push({
+            path: name,
+            content: defaultContent[ext] || '',
+            is_asset: false
+        });
+        
+        renderFiles();
+        openFile(name);
+        hasUnsavedChanges = true;
+    };
+
+    window.createFolder = () => {
+        alert('Folders are not supported. All files are stored in the root.');
+    };
+
+    window.deleteCurrentFile = () => {
+        if (!activeFile) {
+            alert('No file selected');
+            return;
+        }
+        
+        if (!confirm(`Delete "${activeFile.path}"?`)) return;
+        
+        files = files.filter(f => f.path !== activeFile.path);
+        activeFile = null;
+        editor.setValue('', -1);
+        renderFiles();
+        hasUnsavedChanges = true;
+    };
+
+    // --- UPLOAD WITH FOLDER SUPPORT ---
     document.getElementById('upload-asset-btn').onclick = () => uploadInput.click();
     uploadInput.onchange = (e) => {
         const fileList = e.target.files;
@@ -203,8 +441,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let addedCount = 0;
         for (const file of fileList) {
             const reader = new FileReader();
-            const isText = file.name.match(/\.(html|css|js|py|json|txt)$/i);
-            const isImage = file.type.startsWith('image/') || file.name.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/i);
+            const isText = file.name.match(/\.(html|css|js|py|json|txt|md|svg)$/i);
+            const isImage = file.type.startsWith('image/') || file.name.match(/\.(png|jpg|jpeg|gif|webp|ico)$/i);
 
             reader.onload = (evt) => {
                 files.push({
@@ -215,16 +453,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 addedCount++;
                 renderFiles();
                 renderAssets();
-                updatePreview();
+                if (!isMarkdownPreview) updatePreview();
 
-                // Show feedback when all files processed
                 if (addedCount === fileList.length) {
                     alert(`✅ Uploaded ${addedCount} file(s)!\n\nClick 'Save' to persist changes.`);
                 }
             };
             isText ? reader.readAsText(file) : reader.readAsArrayBuffer(file);
         }
-        // Reset input so same file can be re-uploaded
         e.target.value = '';
     };
 
@@ -273,58 +509,65 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        if (files.length === 0) files = [{ path: 'index.html', content: '<h1>Draft</h1>', is_asset: false }];
+        if (files.length === 0) files = [{ path: 'index.html', content: '<h1>Hello World</h1>', is_asset: false }];
 
         renderFiles(); renderAssets();
 
-        // Auto-select index.html
         const start = files.find(f => f.path === 'index.html') || files[0];
         if (start) openFile(start.path);
 
-        updatePreview();
+        if (!isMarkdownPreview) updatePreview();
     })();
 
-    // --- PANEL RESIZERS ---
-    const sidebar = document.getElementById('sidebar');
-    const previewPane = document.getElementById('preview-pane');
-    const resizerLeft = document.getElementById('resizer-left');
-    const resizerRight = document.getElementById('resizer-right');
-
-    let isResizingLeft = false;
-    let isResizingRight = false;
-
-    resizerLeft.addEventListener('mousedown', (e) => {
-        isResizingLeft = true;
-        document.body.style.cursor = 'col-resize';
-        document.body.style.userSelect = 'none';
-    });
-
-    resizerRight.addEventListener('mousedown', (e) => {
-        isResizingRight = true;
-        document.body.style.cursor = 'col-resize';
-        document.body.style.userSelect = 'none';
-    });
-
-    document.addEventListener('mousemove', (e) => {
-        if (isResizingLeft) {
-            const newWidth = e.clientX;
-            if (newWidth > 100 && newWidth < 500) {
-                sidebar.style.width = newWidth + 'px';
-            }
+    // --- ASSETS RENDERING ---
+    function renderAssets() {
+        if (!assetGrid) return;
+        const assetFiles = files.filter(f => f.is_asset);
+        assetGrid.innerHTML = '';
+        if (assetFiles.length === 0) {
+            assetGrid.innerHTML = '<div class="text-sm text-slate-400">No assets</div>';
+            return;
         }
-        if (isResizingRight) {
-            const containerWidth = window.innerWidth;
-            const newWidth = containerWidth - e.clientX;
-            if (newWidth > 200 && newWidth < 800) {
-                previewPane.style.width = newWidth + 'px';
+        assetFiles.forEach(f => {
+            const el = document.createElement('div');
+            el.className = 'p-2 border border-gray-200 rounded text-center bg-white cursor-pointer';
+            el.style.display = 'flex'; el.style.flexDirection = 'column'; el.style.alignItems = 'center';
+            el.style.justifyContent = 'center'; el.style.gap = '6px';
+            // show thumbnail for common image types
+            const ext = f.path.split('.').pop().toLowerCase();
+            if (['png','jpg','jpeg','gif','webp','svg'].includes(ext) && !(f.content instanceof Uint8Array)) {
+                const img = document.createElement('img');
+                img.src = typeof f.content === 'string' ? 'data:image/'+ext+';base64,'+btoa(unescape(encodeURIComponent(f.content))) : URL.createObjectURL(new Blob([f.content]));
+                img.style.maxWidth = '100%'; img.style.maxHeight = '80px'; img.style.objectFit = 'contain';
+                el.appendChild(img);
+            } else if (f.content instanceof Uint8Array) {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(new Blob([f.content]));
+                img.style.maxWidth = '100%'; img.style.maxHeight = '80px'; img.style.objectFit = 'contain';
+                el.appendChild(img);
+            } else {
+                const icon = document.createElement('div'); icon.textContent = ext.toUpperCase(); icon.style.fontWeight='700'; el.appendChild(icon);
             }
-        }
-    });
+            const name = document.createElement('div'); name.textContent = f.path; name.style.fontSize='12px'; name.style.wordBreak='break-word'; el.appendChild(name);
+            el.onclick = () => { openFile(f.path); };
+            assetGrid.appendChild(el);
+        });
+    }
 
-    document.addEventListener('mouseup', () => {
-        isResizingLeft = false;
-        isResizingRight = false;
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-    });
+    // Open preview in a new tab
+    const openPreviewBtn = document.getElementById('open-preview-tab');
+    if (openPreviewBtn) {
+        openPreviewBtn.onclick = () => {
+            const w = window.open();
+            try {
+                w.document.open();
+                w.document.write(previewFrame.srcdoc || '<p>No preview available</p>');
+                w.document.close();
+            } catch (e) {
+                console.error('Failed to open preview in new tab', e);
+                w.close();
+                alert('Unable to open preview in a new tab');
+            }
+        };
+    }
 });

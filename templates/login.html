@@ -1,40 +1,73 @@
 {% extends "layout.html" %}
 {% block content %}
-<div class="flex items-center justify-center min-h-[80vh]">
-    <div class="bg-white p-10 rounded-2xl shadow-xl border w-full max-w-md">
+<div class="flex items-center justify-center min-h-[85vh] p-4 relative">
+
+    <i
+        class="fas fa-asterisk absolute text-5xl text-[#ffc900] top-20 left-[15%] opacity-50 animate-[spin_10s_linear_infinite]"></i>
+    <i class="fas fa-shapes absolute text-4xl text-[#ff90e8] bottom-20 right-[15%] opacity-50 transform -rotate-12"></i>
+
+    <div
+        class="bg-white p-10 rounded-3xl border-4 border-black w-full max-w-md shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative z-10 transition-transform duration-300 hover:-translate-y-1">
+
+        <div
+            class="w-16 h-16 bg-[#ffc900] border-4 border-black rounded-2xl flex items-center justify-center mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transform -rotate-3">
+            <i class="fas fa-key text-3xl text-black"></i>
+        </div>
+
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-        <div class="mb-6">
+        <div class="mb-6 space-y-3">
             {% for category, message in messages %}
-            <div class="p-3 rounded-lg text-sm font-bold {% if category == 'error' %}bg-red-100 text-red-600{% else %}bg-green-100 text-green-600{% endif %}">
+            <div
+                class="p-3 border-2 border-black rounded-xl font-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2 {% if category == 'error' %}bg-[#ff6b6b] text-white{% else %}bg-[#20ffad] text-black{% endif %}">
+                <i
+                    class="fas {% if category == 'error' %}fa-exclamation-triangle{% else %}fa-check-circle{% endif %}"></i>
                 {{ message }}
             </div>
             {% endfor %}
         </div>
         {% endif %}
         {% endwith %}
-        
-        <h1 class="text-3xl font-black mb-2">Welcome Back</h1>
-        <p class="text-slate-500 mb-8">Login to manage your projects.</p>
-        <form method="POST" class="space-y-4">
+
+        <h1 class="text-4xl font-black mb-2 text-black tracking-tight">Welcome Back</h1>
+        <div class="mb-8">
+            <span
+                class="text-black font-bold bg-[#c7f9cc] inline-block px-3 py-1 border-2 border-black rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transform rotate-1">
+                Ready to build? 🚀
+            </span>
+        </div>
+
+        <form method="POST" class="space-y-5">
             <div>
-                <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Username</label>
+                <label class="block font-black text-black mb-2 flex items-center gap-2">
+                    <i class="fas fa-user text-[#ff6b6b]"></i> Username
+                </label>
                 <input type="text" name="username"
-                    class="w-full p-3 bg-slate-50 border rounded-xl outline-none focus:border-blue-600 transition"
+                    class="w-full p-4 bg-[#f8fafc] text-black font-bold border-4 border-black rounded-xl outline-none focus:bg-[#fff9c4] focus:-translate-y-1 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all"
                     required>
             </div>
             <div>
-                <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Password</label>
+                <label class="block font-black text-black mb-2 flex items-center gap-2">
+                    <i class="fas fa-lock text-[#4f46e5]"></i> Password
+                </label>
                 <input type="password" name="password"
-                    class="w-full p-3 bg-slate-50 border rounded-xl outline-none focus:border-blue-600 transition"
+                    class="w-full p-4 bg-[#f8fafc] text-black font-bold border-4 border-black rounded-xl outline-none focus:bg-[#fff9c4] focus:-translate-y-1 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all"
                     required>
             </div>
             <button
-                class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/30">Sign
-                In</button>
+                class="w-full py-4 mt-2 bg-[#20ffad] text-black text-xl rounded-xl font-black border-4 border-black neo-btn flex items-center justify-center gap-3">
+                SIGN IN <i class="fas fa-arrow-right"></i>
+            </button>
         </form>
-        <p class="mt-6 text-center text-slate-500">New here? <a href="/register" class="text-blue-600 font-bold">Create
-                account</a></p>
+
+        <div class="mt-8 pt-6 border-t-4 border-black border-dashed text-center">
+            <p class="text-slate-600 font-bold">New here?
+                <a href="/register"
+                    class="text-[#ff6b6b] hover:text-black hover:bg-[#ff6b6b] px-2 py-1 rounded transition-colors border-2 border-transparent hover:border-black ml-1">
+                    Create account
+                </a>
+            </p>
+        </div>
     </div>
 </div>
 {% endblock %}

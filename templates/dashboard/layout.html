@@ -1,56 +1,85 @@
 {% extends "layout.html" %}
 {% block content %}
-<div class="flex h-[calc(100vh-64px)] w-full bg-white overflow-hidden">
-    <!-- Sidebar -->
-    <aside class="w-64 border-r border-slate-200 flex flex-col p-4 bg-slate-50 shrink-0 h-full">
-        <nav class="flex-1 space-y-1 overflow-y-auto">
-            <a href="/dashboard"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg transition {% if section=='projects' %}bg-white shadow text-blue-600 font-bold{% else %}text-slate-600 hover:bg-slate-200{% endif %}">
-                <i class="fas fa-folder w-5 text-center"></i> Projects
-            </a>
-            <a href="/dashboard/templates"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg transition {% if section=='templates' %}bg-white shadow text-blue-600 font-bold{% else %}text-slate-600 hover:bg-slate-200{% endif %}">
-                <i class="fas fa-magic w-5 text-center"></i> Templates
-            </a>
-            <a href="/dashboard/plugins"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg transition {% if section=='plugins' %}bg-white shadow text-blue-600 font-bold{% else %}text-slate-600 hover:bg-slate-200{% endif %}">
-                <i class="fas fa-plug w-5 text-center"></i> Plugins
-            </a>
-            <a href="/pixel-editor"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg transition {% if section=='pixel-editor' %}bg-white shadow text-pink-600 font-bold{% else %}text-slate-600 hover:bg-slate-200{% endif %}">
-                <i class="fas fa-th-large w-5 text-center"></i> Pixel Editor
+<div class="flex h-[calc(100vh-80px)] w-full bg-[#f8fafc] overflow-hidden text-slate-900 border-t-4 border-black">
+
+    <aside class="w-72 border-r-4 border-black flex flex-col p-5 bg-white shrink-0 h-full relative z-10">
+
+        <h3 class="font-black text-slate-400 text-xs uppercase tracking-widest mb-4 ml-2">Menu</h3>
+
+        <nav class="flex-1 space-y-3 overflow-y-auto pt-1 pr-2">
+
+            <a href="/dashboard" class="flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all duration-200
+                {% if section=='projects' %}
+                    bg-[#ff90e8] border-black text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
+                {% else %}
+                    border-transparent text-slate-500 hover:bg-slate-50 hover:border-black hover:text-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1
+                {% endif %}">
+                <i class="fas fa-folder-open w-6 text-center text-lg"></i>
+                <span class="font-black uppercase tracking-wide text-sm">Projects</span>
             </a>
 
-            <div class="h-px bg-slate-200 my-3"></div>
+            <a href="/dashboard/plugins" class="flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all duration-200 hidden
+                {% if section=='plugins' %}
+                    bg-[#20ffad] border-black text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
+                {% else %}
+                    border-transparent text-slate-500 hover:bg-slate-50 hover:border-black hover:text-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1
+                {% endif %}">
+                <i class="fas fa-plug w-6 text-center text-lg"></i>
+                <span class="font-black uppercase tracking-wide text-sm">Plugins</span>
+            </a>
+
+            <a href="/pixel-editor" class="flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all duration-200
+                {% if section=='pixel-editor' %}
+                    bg-[#ffc900] border-black text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
+                {% else %}
+                    border-transparent text-slate-500 hover:bg-slate-50 hover:border-black hover:text-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1
+                {% endif %}">
+                <i class="fas fa-th-large w-6 text-center text-lg"></i>
+                <span class="font-black uppercase tracking-wide text-sm">Pixel Editor</span>
+            </a>
+
+            <div class="h-0.5 w-full bg-black/10 my-6 border-t-2 border-dashed border-slate-300"></div>
 
             <a href="/marketplace"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg transition text-slate-600 hover:bg-slate-200">
-                <i class="fas fa-store w-5 text-center"></i> Marketplace
+                class="flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-transparent text-slate-500 hover:bg-slate-50 hover:border-black hover:text-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all hidden">
+                <i class="fas fa-store w-6 text-center text-lg"></i>
+                <span class="font-black uppercase tracking-wide text-sm">Marketplace</span>
             </a>
+
             <a href="/sdk"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg transition text-slate-600 hover:bg-slate-200">
-                <i class="fas fa-book w-5 text-center"></i> SDK Docs
+                class="flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-transparent text-slate-500 hover:bg-slate-50 hover:border-black hover:text-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all hidden">
+                <i class="fas fa-book w-6 text-center text-lg"></i>
+                <span class="font-black uppercase tracking-wide text-sm">SDK Docs</span>
             </a>
         </nav>
 
-        <div class="mt-auto border-t border-slate-200 pt-4">
-            <div class="flex items-center gap-3 mb-4 px-2">
+        <div class="mt-auto border-t-4 border-black pt-5">
+            <h3 class="font-black text-slate-400 text-xs uppercase tracking-widest mb-3 ml-2">Account</h3>
+
+            <div
+                class="flex items-center gap-3 mb-4 p-3 bg-[#f8fafc] border-2 border-black rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                 <div
-                    class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                    class="w-10 h-10 bg-[#4f46e5] rounded-lg flex items-center justify-center text-white font-black text-lg border-2 border-black transform -rotate-3">
                     {{ current_user.username[0]|upper }}
                 </div>
-                <div class="font-bold text-sm truncate">{{ current_user.username }}</div>
+                <div class="font-black text-base truncate">{{ current_user.username }}</div>
             </div>
+
             <a href="/logout"
-                class="flex items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg transition text-sm font-bold w-full">
-                <i class="fas fa-sign-out-alt w-5 text-center"></i> Sign Out
+                class="flex items-center justify-center gap-2 px-4 py-3 text-white bg-[#ff6b6b] border-2 border-black rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all text-sm font-black w-full uppercase tracking-wider">
+                <i class="fas fa-sign-out-alt"></i> Sign Out
             </a>
         </div>
     </aside>
 
-    <!-- Main Content Area -->
-    <main class="flex-1 overflow-y-auto bg-white p-8">
-        {% block dashboard_content %}{% endblock %}
+    <main class="flex-1 overflow-y-auto p-8 relative bg-[#f8fafc]">
+        <div
+            class="absolute inset-0 bg-[radial-gradient(#cbd5e1_2px,transparent_2px)] [background-size:30px_30px] opacity-50 z-0">
+        </div>
+
+        <div class="relative z-10 h-full">
+            {% block dashboard_content %}{% endblock %}
+        </div>
     </main>
 </div>
 {% endblock %}

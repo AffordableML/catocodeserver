@@ -2,6 +2,72 @@
 {% block title %}Dashboard - CatoCode{% endblock %}
 
 {% block content %}
+<!-- Onboarding Modal -->
+<div id="onboarding-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden">
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
+            <h2 class="text-2xl font-bold">Welcome to CatoCode!</h2>
+            <p class="opacity-90">Let's get you started with web development</p>
+        </div>
+        <div class="p-6">
+            <div class="space-y-4">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold shrink-0">1</div>
+                    <div>
+                        <h3 class="font-bold text-gray-800">Create a Project</h3>
+                        <p class="text-gray-500 text-sm">Start from a blank slate or choose from our templates - React, Vue, Flask, and more!</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold shrink-0">2</div>
+                    <div>
+                        <h3 class="font-bold text-gray-800">Build & Code</h3>
+                        <p class="text-gray-500 text-sm">Use our powerful code editor with syntax highlighting, auto-complete, and live preview.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold shrink-0">3</div>
+                    <div>
+                        <h3 class="font-bold text-gray-800">Deploy Instantly</h3>
+                        <p class="text-gray-500 text-sm">Publish your website with one click. Get a free URL to share with the world.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex gap-3">
+                <button onclick="closeOnboarding()" class="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200">
+                    Skip
+                </button>
+                <a href="/dashboard/templates" class="flex-1 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 text-center">
+                    Get Started
+                </a>
+            </div>
+            <div class="mt-4 flex items-center gap-2 text-sm text-gray-500">
+                <input type="checkbox" id="dont-show-again" class="rounded text-blue-600">
+                Don't show this again
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showOnboarding() {
+    {% if show_onboarding %}
+    document.getElementById('onboarding-modal').classList.remove('hidden');
+    {% endif %}
+}
+
+function closeOnboarding() {
+    document.getElementById('onboarding-modal').classList.add('hidden');
+    if (document.getElementById('dont-show-again').checked) {
+        fetch('/api/onboarding/complete', { method: 'POST' });
+    }
+}
+
+// Show on page load
+setTimeout(showOnboarding, 500);
+</script>
+
 <div class="min-h-full bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
     <div class="max-w-7xl mx-auto">
 

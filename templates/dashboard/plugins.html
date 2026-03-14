@@ -6,12 +6,16 @@
         <p class="text-slate-500 text-sm mt-1">Extend your editor with custom functionality</p>
     </div>
     <div class="flex gap-2">
-        <a href="/marketplace" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-200">
-            <i class="fas fa-store mr-1"></i> Marketplace
-        </a>
+        <label class="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-200 cursor-pointer">
+            <i class="fas fa-download mr-1"></i> Import Plugin
+            <input type="file" accept=".json" class="hidden" onchange="importPlugin(event)">
+        </label>
+        <button onclick="exportPlugin()" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-200">
+            <i class="fas fa-upload mr-1"></i> Export
+        </button>
         <button onclick="document.getElementById('plugin-modal').classList.remove('hidden')"
             class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/30">
-            <i class="fas fa-plus mr-1"></i> Add Plugin
+            <i class="fas fa-plus mr-1"></i> New Plugin
         </button>
     </div>
 </div>
@@ -86,13 +90,9 @@
     <div class="col-span-full text-center py-16 text-slate-400 bg-slate-50 rounded-xl border border-dashed">
         <i class="fas fa-puzzle-piece text-5xl mb-4 opacity-30"></i>
         <p class="font-bold text-lg">No plugins yet</p>
-        <p class="text-sm mb-4">Create a custom plugin or install one from the marketplace.</p>
-        <div class="flex justify-center gap-2">
-            <button onclick="document.getElementById('plugin-modal').classList.remove('hidden')"
-                class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Create Plugin</button>
-            <a href="/marketplace" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm">Browse
-                Marketplace</a>
-        </div>
+        <p class="text-sm mb-4"> to extend your editorCreate a custom plugin.</p>
+        <button onclick="document.getElementById('plugin-modal').classList.remove('hidden')"
+            class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm">Create Plugin</button>
     </div>
     {% endfor %}
 </div>
@@ -292,6 +292,54 @@ document.addEventListener('keydown', (e) => {
         } else {
             alert('Error saving plugin');
         }
+    }
+
+    async function importPlugin(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        try {
+            const text = await file.text();
+            const plugin = JSON.parse(text);
+            
+            const res = await fetch('/api/plugin/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(plugin)
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error importing plugin: ' + (data.error || 'Unknown error'));
+            }
+        } catch (e) {
+            alert('Invalid plugin file');
+        }
+    }
+
+    function exportPlugin() {
+        const plugins = document.querySelectorAll('[data-plugin-id]');
+        if (plugins.length === 0) {
+            alert('No plugins to export');
+            return;
+        }
+        
+        const pluginData = {
+            name: 'My Exported Plugin',
+            description: 'Exported from CatoCode',
+            code: '// Your plugin code here',
+            category: 'utility'
+        };
+        
+        const blob = new Blob([JSON.stringify(pluginData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'plugin.json';
+        a.click();
+        URL.revokeObjectURL(url);
     }
 </script>
 {% endblock %}

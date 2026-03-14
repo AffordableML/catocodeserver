@@ -4,6 +4,7 @@ CREATE TABLE users (
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     storage_used INTEGER NOT NULL DEFAULT 0,
+    onboarding_shown INTEGER DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -14,12 +15,13 @@ CREATE TABLE projects (
     project_uid TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
     description TEXT,
-    is_published_site INTEGER DEFAULT 0, -- 1 = Private site link
-    is_on_explore INTEGER DEFAULT 0,    -- 1 = Public in gallery
-    is_template INTEGER DEFAULT 0,       -- 1 = Shared as template
+    image_url TEXT,
+    is_published_site INTEGER DEFAULT 0,
+    is_on_explore INTEGER DEFAULT 0,
+    is_template INTEGER DEFAULT 0,
     likes_count INTEGER NOT NULL DEFAULT 0,
     remix_count INTEGER NOT NULL DEFAULT 0,
-    remixed_from TEXT,                   -- UID of original template
+    remixed_from TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users (id)

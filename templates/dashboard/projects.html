@@ -1,87 +1,113 @@
 {% extends "dashboard/layout.html" %}
 {% block dashboard_content %}
-<div class="flex justify-between items-center mb-8">
+
+<div class="flex justify-between items-end mb-10 border-b-2 border-black pb-6 border-dashed">
     <div>
-        <h1 class="text-3xl font-bold">My Projects</h1>
-        <p class="text-slate-500 text-sm mt-1">Build and publish awesome applications</p>
+        <h1 class="text-4xl font-black text-slate-900 tracking-tight">My Projects</h1>
+        <p
+            class="text-slate-500 font-mono text-sm mt-2 bg-yellow-100 inline-block px-2 py-1 border border-black/10 rounded">
+            Build and publish awesome applications
+        </p>
     </div>
-    <a href="/dashboard/templates"
-        class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition flex items-center gap-2">
+
+    <button onclick="createNewProject()"
+        class="bg-[#20ffad] text-black px-6 py-3 rounded-xl font-bold border-2 border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[5px] hover:translate-y-[5px] transition-all flex items-center gap-2 active:bg-[#15cc8a]">
         <i class="fas fa-plus"></i> New Project
-    </a>
+    </button>
 </div>
 
+<h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+    <i class="fas fa-code"></i> Code Projects
+</h2>
 
-
-
-<h2 class="text-2xl font-bold mb-4">My Code Projects</h2>
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
     {% for p in projects %}
-    <div class="bg-white border rounded-2xl overflow-hidden hover:shadow-xl transition group"
+    <div class="bg-white border-2 border-black rounded-2xl overflow-hidden shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all group relative"
         data-project-id="{{ p.id }}">
-        <!-- Preview Header -->
-        <div class="h-32 bg-slate-100 relative overflow-hidden">
-            {% if p.is_published_site %}
+
+        <div
+            class="h-36 bg-slate-50 relative overflow-hidden border-b-2 border-black group-hover:bg-slate-100 transition">
+
+            <div class="absolute top-3 left-3 flex gap-1.5 z-10">
+                <div class="w-3 h-3 rounded-full bg-[#ff6b6b] border border-black"></div>
+                <div class="w-3 h-3 rounded-full bg-[#ffc900] border border-black"></div>
+                <div class="w-3 h-3 rounded-full bg-[#20ffad] border border-black"></div>
+            </div>
+
+            {% if p.image_url %}
+            <img src="{{ p.image_url }}" class="w-full h-full object-cover" alt="">
+            {% elif p.is_published_site %}
             <iframe src="/site/{{ p.project_uid }}"
-                class="w-full h-full border-none pointer-events-none scale-[0.25] origin-top-left"
+                class="w-full h-full border-none pointer-events-none scale-[0.25] origin-top-left opacity-80"
                 style="width: 400%; height: 400%"></iframe>
             {% else %}
             <div class="w-full h-full flex items-center justify-center text-slate-300">
-                <i class="fas fa-file-code text-4xl"></i>
+                <i class="fas fa-cube text-5xl opacity-50"></i>
             </div>
             {% endif %}
 
-            <!-- Status Badges -->
-            <div class="absolute top-2 right-2 flex gap-1">
-                {% if p.is_on_explore %}
-                <span class="px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full">
-                    <i class="fas fa-globe mr-1"></i>Explore
+            <label
+                class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer backdrop-blur-sm">
+                <input type="file" accept="image/*" class="hidden" onchange="uploadProjectImage(event, {{ p.id }})">
+                <span
+                    class="bg-white text-black px-4 py-2 rounded-lg font-bold border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-sm">
+                    <i class="fas fa-camera mr-2"></i>Change Cover
                 </span>
-                {% endif %}
+            </label>
+
+            <div class="absolute top-3 right-3 flex gap-1">
                 {% if p.is_published_site %}
-                <span class="px-2 py-0.5 bg-blue-500 text-white text-[10px] font-bold rounded-full">
-                    <i class="fas fa-link mr-1"></i>Live
+                <span
+                    class="px-2 py-0.5 bg-[#20ffad] text-black border border-black text-[10px] font-bold rounded-md shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    <i class="fas fa-bolt mr-1"></i>LIVE
                 </span>
                 {% endif %}
             </div>
         </div>
 
-        <!-- Content -->
         <div class="p-5">
-            <h3 class="text-lg font-bold mb-1 truncate">{{ p.name }}</h3>
-            <p class="text-slate-400 text-xs mb-4">{{ p.description or 'No description' }}</p>
+            <h3 class="text-xl font-black mb-1 truncate">{{ p.name }}</h3>
+            <div class="flex items-center gap-2 mb-5">
+                <p id="desc-{{ p.id }}" class="text-slate-500 text-xs font-mono bg-slate-50 inline-block px-1 rounded break-words">
+                    {{ p.description or "// No description provided" }}
+                </p>
+                <button onclick="editDescription({{ p.id }})" title="Edit description"
+                    class="text-[10px] px-2 py-1 rounded bg-white border border-black text-slate-600 hover:bg-slate-100">
+                    <i class="fas fa-pencil-alt"></i>
+                </button>
+            </div>
 
-            <!-- Action Buttons -->
-            <div class="flex gap-2 mb-3">
+            <div class="flex gap-3 mb-4">
                 <a href="/editor/{{ p.id }}"
-                    class="flex-1 bg-blue-600 text-white py-2 text-center rounded-lg font-bold text-sm hover:bg-blue-700 transition">
-                    <i class="fas fa-edit mr-1"></i> Edit
+                    class="flex-1 bg-[#4f46e5] text-white py-2 text-center rounded-lg font-bold text-sm border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all">
+                    <i class="fas fa-edit mr-1"></i> Code
                 </a>
                 {% if p.is_published_site %}
                 <a href="/site/{{ p.project_uid }}" target="_blank"
-                    class="bg-slate-100 text-slate-600 px-3 py-2 rounded-lg hover:bg-slate-200 transition"
+                    class="bg-white text-black px-3 py-2 rounded-lg border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
                     title="View Live">
                     <i class="fas fa-external-link-alt"></i>
                 </a>
                 {% endif %}
             </div>
 
-            <!-- Publish Options -->
-            <div class="flex gap-2 pt-3 border-t">
+            <div class="flex gap-2 pt-4 border-t-2 border-black border-dashed">
                 <button onclick="togglePublish({{ p.id }}, {{ p.is_published_site or 0 }})"
-                    class="flex-1 text-xs py-2 rounded-lg font-bold transition {{ 'bg-blue-100 text-blue-600' if p.is_published_site else 'bg-slate-100 text-slate-500 hover:bg-blue-100 hover:text-blue-600' }}">
+                    class="flex-1 text-xs py-1.5 rounded-md font-bold transition-all border border-transparent hover:border-black
+                    {{ 'bg-blue-100 text-blue-800' if p.is_published_site else 'bg-slate-100 text-slate-500 hover:bg-[#c7f9cc] hover:text-black' }}">
                     <i class="fas fa-link mr-1"></i> {{ 'Published' if p.is_published_site else 'Publish' }}
                 </button>
-                <button onclick="toggleExplore({{ p.id }}, {{ p.is_on_explore or 0 }})"
-                    class="flex-1 text-xs py-2 rounded-lg font-bold transition {{ 'bg-green-100 text-green-600' if p.is_on_explore else 'bg-slate-100 text-slate-500 hover:bg-green-100 hover:text-green-600' }}">
-                    <i class="fas fa-globe mr-1"></i> {{ 'On Explore' if p.is_on_explore else 'Explore' }}
+                <button onclick="copyEmbedImmediate({{ p.id }}, '{{ p.project_uid }}')"
+                    class="flex-1 text-xs py-1.5 rounded-md font-bold transition-all border border-transparent hover:border-black
+                    {{ 'bg-purple-100 text-purple-800' if p.is_template else 'bg-slate-100 text-slate-500 hover:bg-[#e0b0ff] hover:text-black' }}">
+                    <i class="fas fa-paper-plane mr-1"></i> Embed
                 </button>
-                <button onclick="shareAsTemplate({{ p.id }}, {{ p.is_template or 0 }})"
-                    class="flex-1 text-xs py-2 rounded-lg font-bold transition {{ 'bg-purple-100 text-purple-600' if p.is_template else 'bg-slate-100 text-slate-500 hover:bg-purple-100 hover:text-purple-600' }}">
-                    <i class="fas fa-code-branch mr-1"></i> {{ 'Template' if p.is_template else 'Template' }}
+                <button onclick="copyShareCode({{ p.id }}, '{{ p.project_uid }}')"
+                    class="flex-1 text-xs py-1.5 rounded-md font-bold transition-all border border-transparent hover:border-black bg-slate-100 text-slate-500 hover:bg-[#e0b0ff] hover:text-black">
+                    <i class="fas fa-code mr-1"></i> Share Code
                 </button>
                 <button onclick="deleteProject({{ p.id }})"
-                    class="text-xs px-3 py-2 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition"
+                    class="text-xs px-2 py-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 border border-transparent transition"
                     title="Delete">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -89,51 +115,60 @@
         </div>
     </div>
     {% else %}
-    <div class="col-span-full text-center py-20 text-slate-400 bg-slate-50 rounded-2xl border border-dashed">
-        <i class="fas fa-folder-open text-6xl mb-4 opacity-30"></i>
-        <p class="text-xl font-bold mb-2">No projects yet</p>
-        <p class="text-sm mb-6">Start building something awesome!</p>
-        <a href="/dashboard/templates" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">
-            <i class="fas fa-plus mr-2"></i>Create Your First Project
-        </a>
+    <div
+        class="col-span-full text-center py-20 text-slate-400 bg-white rounded-2xl border-2 border-dashed border-black/20 hover:border-black/50 transition">
+        <div
+            class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-yellow-100 mb-4 border-2 border-black">
+            <i class="fas fa-ghost text-4xl text-black"></i>
+        </div>
+        <p class="text-xl font-black text-black mb-2">It's quiet in here...</p>
+        <p class="text-sm mb-6 font-mono">Start a new glitchy experiment!</p>
+        <button onclick="createNewProject()"
+            class="inline-block bg-[#ff90e8] text-black px-6 py-3 rounded-xl font-bold border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all">
+            <i class="fas fa-magic mr-2"></i>Create First Project
+        </button>
     </div>
     {% endfor %}
 </div>
 
 {% if platformers %}
-<div class="mt-12 mb-12">
-    <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
-        <i class="fas fa-gamepad text-emerald-500"></i> My Platformer Games
+<div class="mt-16 mb-12">
+    <h2 class="text-2xl font-bold mb-6 flex items-center gap-2 border-b-2 border-black pb-2 inline-block">
+        <i class="fas fa-gamepad text-[#ff6b6b]"></i> Platformer Games
     </h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {% for p in platformers %}
-        <div class="bg-white border rounded-2xl overflow-hidden hover:shadow-xl transition group">
-            <div class="h-32 bg-slate-100 relative overflow-hidden flex items-center justify-center text-slate-300">
-                <i class="fas fa-mountain text-4xl"></i>
+        <div
+            class="bg-white border-2 border-black rounded-2xl overflow-hidden shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all group">
+            <div
+                class="h-32 bg-[#ffc900] relative overflow-hidden flex items-center justify-center text-black border-b-2 border-black pattern-wavy">
+                <i class="fas fa-gamepad text-5xl opacity-20 transform -rotate-12"></i>
                 <div class="absolute top-2 right-2 flex gap-1">
                     {% if p.is_on_explore %}
-                    <span class="px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full">
-                        <i class="fas fa-globe mr-1"></i>Explore
+                    <span
+                        class="px-2 py-0.5 bg-white text-black text-[10px] font-bold rounded-md border border-black shadow-sm">
+                        <i class="fas fa-globe mr-1"></i>World
                     </span>
                     {% endif %}
                 </div>
             </div>
             <div class="p-5">
-                <h3 class="text-lg font-bold mb-1 truncate">{{ p.name }}</h3>
-                <p class="text-slate-400 text-xs mb-4">Platformer Level</p>
+                <h3 class="text-lg font-black mb-1 truncate">{{ p.name }}</h3>
+                <p class="text-slate-500 text-xs mb-4 font-mono">Level Design</p>
                 <div class="flex gap-2 mb-3">
                     <a href="/dashboard/platformer-builder?id={{ p.id }}"
-                        class="flex-1 bg-emerald-600 text-white py-2 text-center rounded-lg font-bold text-sm hover:bg-emerald-700 transition">
-                        <i class="fas fa-edit mr-1"></i> Edit
+                        class="flex-1 bg-[#ff6b6b] text-white py-2 text-center rounded-lg font-bold text-sm border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all">
+                        <i class="fas fa-pencil-alt mr-1"></i> Design
                     </a>
                 </div>
-                <div class="flex gap-2 pt-3 border-t">
+                <div class="flex gap-2 pt-3 border-t-2 border-black border-dashed">
                     <button onclick="togglePlatformerKey({{ p.id }}, {{ p.is_on_explore or 0 }})"
-                        class="flex-1 text-xs py-2 rounded-lg font-bold transition {{ 'bg-green-100 text-green-600' if p.is_on_explore else 'bg-slate-100 text-slate-500 hover:bg-green-100 hover:text-green-600' }}">
-                        <i class="fas fa-globe mr-1"></i> {{ 'On Explore' if p.is_on_explore else 'Publish' }}
+                        class="flex-1 text-xs py-1.5 rounded-md font-bold transition border border-transparent hover:border-black
+                        {{ 'bg-green-100 text-green-800' if p.is_on_explore else 'bg-slate-100 text-slate-500 hover:bg-[#c7f9cc]' }}">
+                        <i class="fas fa-globe mr-1"></i> {{ 'Shared' if p.is_on_explore else 'Share' }}
                     </button>
                     <button onclick="deletePlatformer({{ p.id }})"
-                        class="text-xs px-3 py-2 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition">
+                        class="text-xs px-2 py-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-100 transition">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -145,6 +180,51 @@
 {% endif %}
 
 <script>
+    async function createNewProject() {
+        const name = prompt('Enter project name:', 'My Cool Project');
+        if (!name) return;
+
+        const res = await fetch('/project/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, template: 'blank' })
+        });
+        const data = await res.json();
+        if (data.success) {
+            window.location.href = '/editor/' + data.id;
+        } else {
+            alert(data.error || 'Failed to create project');
+        }
+    }
+
+    async function uploadProjectImage(event, projectId) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+            const res = await fetch(`/api/project/${projectId}/image`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to upload image');
+            }
+        } catch (e) {
+            alert('Error uploading image');
+        }
+    }
+
     async function togglePublish(id, current) {
         const res = await fetch(`/api/project/${id}/publish`, { method: 'POST' });
         const data = await res.json();
@@ -156,43 +236,47 @@
         }
     }
 
-    async function toggleExplore(id, current) {
-        const action = current ? 'remove from' : 'share to';
-        if (!confirm(`${current ? 'Remove' : 'Share'} this project ${action} Explore?`)) return;
-
-        const res = await fetch(`/api/project/${id}/explore`, { method: 'POST' });
-        const data = await res.json();
-        if (data.success) {
-            location.reload();
-        }
-    }
-
     async function deleteProject(id) {
         if (!confirm('Delete this project? This cannot be undone.')) return;
         await fetch(`/api/project/${id}/delete`, { method: 'POST' });
         location.reload();
     }
 
-    async function shareAsTemplate(id, current) {
-        if (current) {
-            alert('This project is already shared as a template in the Marketplace!');
-            return;
-        }
-        const description = prompt('Enter a description for your template (visible in Marketplace):');
-        if (description === null) return;
-
-        const res = await fetch(`/api/project/${id}/share-template`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ description })
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert('Template shared! Your project is now available in the Marketplace for others to remix.');
-            location.reload();
+    // Copy an embed iframe snippet for the project to clipboard
+    function copyEmbedImmediate(projectId, projectUid) {
+        const embed = `<iframe src="${location.origin}/site/${projectUid}" width="800" height="450" frameborder="0"></iframe>`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(embed).then(()=>alert('Embed code copied to clipboard'));
         } else {
-            alert(data.error || 'Failed to share template');
+            const ta = document.createElement('textarea'); ta.value = embed; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); alert('Embed code copied to clipboard');
         }
+    }
+
+    // Copy a public code/view URL where users can view files side-by-side and remix
+    function copyShareCode(projectId, projectUid) {
+        const url = `${location.origin}/project_public/${projectUid}?remix=true`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(()=>alert('Share URL copied to clipboard'));
+        } else {
+            const ta = document.createElement('textarea'); ta.value = url; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); alert('Share URL copied to clipboard');
+        }
+    }
+
+    // Edit project description inline
+    function editDescription(pid) {
+        const el = document.getElementById(`desc-${pid}`);
+        const current = el.textContent.trim();
+        const val = prompt('Edit project description:', current === '// No description provided' ? '' : current);
+        if (val === null) return; // cancelled
+        fetch(`/api/project/${pid}/description`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description: val })
+        }).then(r => r.json()).then(data => {
+            if (data.success) {
+                el.textContent = val || '// No description provided';
+            } else {
+                alert(data.error || 'Failed to save description');
+            }
+        }).catch(()=>alert('Failed to save description'));
     }
     async function togglePlatformerKey(id, current) {
         const action = current ? 'remove from' : 'share to';
@@ -207,4 +291,8 @@
         location.reload();
     }
 </script>
+
+<!-- small spacer to ensure bottom borders are not cut off -->
+<div class="h-12"></div>
+<!-- share modal removed: embed and share-code now copy directly to clipboard -->
 {% endblock %}

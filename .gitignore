@@ -1,10 +1,70 @@
+# Python
 venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Flask
 instance/
-.pytest_cache/
-.DS_Store
+*.db
 database.db
-*.zip
+*.sqlite
+*.sqlite3
+
+# Environment
+.env
+.env.local
+.env.*.local
+.envrc
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Uploads and temp files
 uploads/
+temp/
+*.tmp
+
+# Node (if used)
 node_modules/
+
+# Supabase
+supabase/**
+
+# PostgreSQL data (local)
+pg_data/

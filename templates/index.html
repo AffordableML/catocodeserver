@@ -1,588 +1,249 @@
 {% extends "layout.html" %}
 {% block title %}CatoCode - Build Amazing Games & Websites{% endblock %}
 {% block content %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap');
-    
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Nunito:wght@400;700;900&display=swap');
+
     * {
+        font-family: 'Nunito', sans-serif;
+    }
+
+    .font-mono {
         font-family: 'JetBrains Mono', monospace;
     }
-    
-    #globe-container {
-        position: fixed;
-        top: 0;
-        right: 0;
-        width: 60%;
-        height: 100vh;
-        z-index: 0;
-    }
-    
-    /* Dotted grid background */
-    .dotted-grid {
+
+    /* Cute Polka Dot Background */
+    .dotted-bg {
+        background-color: #f8fafc;
+        background-image: radial-gradient(#cbd5e1 2px, transparent 2px);
+        background-size: 30px 30px;
         position: fixed;
         inset: 0;
-        background-image: radial-gradient(circle, #e5e7eb 1px, transparent 1px);
-        background-size: 24px 24px;
         z-index: 0;
     }
-    
+
     .content-wrapper {
         position: relative;
         z-index: 10;
-        min-height: 100vh;
+        overflow-x: hidden;
     }
-    
-    .char {
-        display: inline-block;
-        animation: charReveal 0.5s ease forwards;
-        opacity: 0;
-        transform: translateY(20px);
+
+    /* Neo-brutalist Animations */
+    .neo-btn {
+        box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+        transition: all 0.2s ease;
     }
-    
-    @keyframes charReveal {
-        to {
-            opacity: 1;
-            transform: translateY(0);
+
+    .neo-btn:hover {
+        box-shadow: 0px 0px 0px 0px rgba(0, 0, 0, 1);
+        transform: translate(4px, 4px);
+    }
+
+    .neo-card {
+        box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 1);
+        transition: all 0.2s ease;
+    }
+
+    .neo-card:hover {
+        box-shadow: 10px 10px 0px 0px rgba(0, 0, 0, 1);
+        transform: translateY(-4px);
+    }
+
+    /* Endless Marquee */
+    .marquee-container {
+        display: flex;
+        width: 200vw;
+        animation: marquee 15s linear infinite;
+    }
+
+    @keyframes marquee {
+        0% {
+            transform: translateX(0);
+        }
+
+        100% {
+            transform: translateX(-50%);
         }
     }
-    
-    .glitch {
-        position: relative;
-        animation: glitch 2s infinite;
-    }
-    
-    @keyframes glitch {
-        0%, 90%, 100% { transform: translate(0); }
-        92% { transform: translate(-2px, 1px); }
-        94% { transform: translate(2px, -1px); }
-        96% { transform: translate(-1px, 2px); }
-        98% { transform: translate(1px, -2px); }
-    }
-    
-    .gradient-fill {
-        background: linear-gradient(90deg, #000 0%, #333 50%, #000 100%);
-        background-size: 200% auto;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        animation: gradientMove 3s linear infinite;
-    }
-    
-    @keyframes gradientMove {
-        to { background-position: 200% center; }
-    }
-    
-    .btn-start {
-        position: relative;
-        background: #000;
-        color: #fff;
-        padding: 24px 64px;
-        font-size: 18px;
-        font-weight: 700;
-        letter-spacing: 2px;
-        border: none;
-        cursor: pointer;
-        overflow: hidden;
-        transition: all 0.3s ease;
-    }
-    
-    .btn-start::before {
-        content: '';
+
+    /* Floating Stickers */
+    .sticker {
         position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-        transition: left 0.5s ease;
+        animation: float 6s ease-in-out infinite;
+        z-index: 5;
     }
-    
-    .btn-start:hover::before {
-        left: 100%;
-    }
-    
-    .btn-start:hover {
-        transform: scale(1.05);
-        box-shadow: 0 0 40px rgba(0,0,0,0.3);
-    }
-    
-    .marquee {
-        overflow: hidden;
-        white-space: nowrap;
-    }
-    
-    .marquee-inner {
-        display: inline-block;
-        animation: marquee 20s linear infinite;
-    }
-    
-    @keyframes marquee {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
-    }
-    
-    .floating-word {
-        position: absolute;
-        font-size: 14px;
-        font-weight: 600;
-        color: #000;
-        opacity: 0.15;
-        animation: floatWord 8s ease-in-out infinite;
-    }
-    
-    @keyframes floatWord {
-        0%, 100% { transform: translateY(0) rotate(0deg); }
-        50% { transform: translateY(-20px) rotate(5deg); }
-    }
-    
-    .nav-link {
-        position: relative;
-    }
-    
-    .nav-link::after {
-        content: '';
-        position: absolute;
-        bottom: -4px;
-        left: 0;
-        width: 0;
-        height: 2px;
-        background: #000;
-        transition: width 0.3s ease;
-    }
-    
-    .nav-link:hover::after {
-        width: 100%;
+
+    @keyframes float {
+
+        0%,
+        100% {
+            transform: translateY(0) rotate(var(--rot));
+        }
+
+        50% {
+            transform: translateY(-15px) rotate(calc(var(--rot) + 5deg));
+        }
     }
 </style>
 
-<div class="dotted-grid"></div>
-<div id="globe-container"></div>
+<div class="dotted-bg"></div>
 
 <div class="content-wrapper">
-    <!-- Navigation -->
-    <nav class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-sm border-b border-gray-100">
-        <div class="flex items-center justify-between px-8 py-4 max-w-7xl mx-auto">
-            <a href="/" class="flex items-center gap-3">
-                <div class="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-                    <i class="fas fa-code text-white text-sm"></i>
-                </div>
-                <span class="text-lg font-bold text-black">CatoCode</span>
-            </a>
-            <div class="flex items-center gap-8">
-                <a href="/marketplace" class="nav-link text-sm text-gray-600 hover:text-black transition">MARKETPLACE</a>
-                <a href="/notebooks" class="nav-link text-sm text-gray-600 hover:text-black transition">NOTEBOOKS</a>
-                <a href="/explore" class="nav-link text-sm text-gray-600 hover:text-black transition">EXPLORE</a>
-                {% if current_user.is_authenticated %}
-                <a href="/dashboard" class="px-4 py-2 bg-black text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition">
-                    DASHBOARD
-                </a>
-                {% else %}
-                <a href="/login" class="text-sm text-gray-600 hover:text-black transition">LOGIN</a>
-                <a href="/register" class="px-4 py-2 bg-black text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition">
-                    SIGN UP
-                </a>
-                {% endif %}
-            </div>
-        </div>
-    </nav>
 
-    <!-- Hero Section -->
-    <div class="pt-32 pb-20 px-8 min-h-screen flex items-center">
-        <div class="max-w-2xl">
-            <!-- Animated tagline -->
-            <div class="mb-6 text-sm text-gray-400 tracking-widest" id="tagline"></div>
-            
-            <!-- Main headline -->
-            <h1 class="text-6xl md:text-8xl font-black text-black leading-tight mb-8" id="headline">
-                <span class="gradient-fill">BUILD</span><br>
-                <span class="gradient-fill">ANYTHING</span><br>
-                <span class="gradient-fill">IMAGINE</span>
+    <div class="hidden lg:block">
+        <div class="sticker bg-[#c7f9cc] border-2 border-black px-4 py-2 rounded-lg font-mono font-bold neo-btn"
+            style="top: 25%; left: 10%; --rot: -10deg;">JavaScript</div>
+        <div class="sticker bg-[#e0b0ff] border-2 border-black px-4 py-2 rounded-lg font-mono font-bold neo-btn"
+            style="top: 60%; left: 15%; --rot: 15deg; animation-delay: 1s;">Python 🐍</div>
+        <div class="sticker bg-[#ffc900] border-2 border-black px-4 py-2 rounded-lg font-mono font-bold neo-btn"
+            style="top: 30%; right: 12%; --rot: 8deg; animation-delay: 2s;">Games 🎮</div>
+        <div class="sticker bg-[#ff6b6b] text-white border-2 border-black px-4 py-2 rounded-lg font-mono font-bold neo-btn"
+            style="top: 65%; right: 18%; --rot: -5deg; animation-delay: 0.5s;">HTML5 🚀</div>
+    </div>
+
+    <div class="py-32 px-8 min-h-screen flex flex-col items-center justify-center text-center relative">
+        <div class="max-w-4xl relative z-10 flex flex-col items-center">
+
+            <div class="mb-8 inline-block transform -rotate-2">
+                <span
+                    class="bg-yellow-200 text-black border-2 border-black px-4 py-2 font-mono text-sm font-bold shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] rounded-md">
+                    <i class="fas fa-magic mr-2 text-[#ff6b6b]"></i> // THE FUN WAY TO CODE
+                </span>
+            </div>
+
+            <h1 class="text-6xl md:text-8xl font-black text-black leading-[1.1] mb-8 tracking-tight">
+                BUILD <span
+                    class="text-[#ff6b6b] inline-block transform hover:scale-105 transition-transform">ANYTHING</span><br>
+                YOU IMAGINE.
             </h1>
-            
-            <!-- Description -->
-            <p class="text-lg text-gray-500 mb-12 max-w-lg leading-relaxed" id="description">
-                The ultimate visual programming platform. Create stunning websites, epic games, and powerful apps — no code required.
+
+            <p class="text-xl text-slate-600 mb-12 max-w-2xl font-bold leading-relaxed">
+                The ultimate creative platform. Code stunning websites, design playful games, and launch apps instantly
+                — <span class="bg-[#20ffad] px-2 border border-black rounded transform -rotate-1 inline-block">zero
+                    setup required.</span>
             </p>
-            
-            <!-- CTA Buttons -->
-            <div class="flex flex-col sm:flex-row gap-4" id="cta">
-                <a href="/register" class="btn-start">
-                    START BUILDING
-                    <span class="ml-2">→</span>
-                </a>
-                <a href="/explore" class="px-8 py-4 border-2 border-black text-black font-semibold text-sm hover:bg-black hover:text-white transition">
-                    EXPLORE
+
+            {% if current_user.is_authenticated %}
+            <div class="flex justify-center">
+                <a href="/dashboard"
+                   class="bg-[#20ffad] text-black px-8 py-4 text-xl font-black rounded-xl border-2 border-black neo-btn flex items-center justify-center gap-3">
+                    GO TO DASHBOARD <i class="fas fa-tachometer-alt"></i>
                 </a>
             </div>
-            
-            <!-- Stats -->
-            <div class="mt-16 flex gap-12" id="stats">
-                <div>
-                    <div class="text-3xl font-bold text-black">50K+</div>
-                    <div class="text-xs text-gray-400 tracking-widest mt-1">PROJECTS</div>
-                </div>
-                <div>
-                    <div class="text-3xl font-bold text-black">100K+</div>
-                    <div class="text-xs text-gray-400 tracking-widest mt-1">BUILDERS</div>
-                </div>
-                <div>
-                    <div class="text-3xl font-bold text-black">1M+</div>
-                    <div class="text-xs text-gray-400 tracking-widest mt-1">GAMES</div>
-                </div>
+            {% else %}
+            <div class="flex flex-col sm:flex-row gap-6">
+                <a href="/register"
+                    class="bg-[#20ffad] text-black px-8 py-4 text-xl font-black rounded-xl border-2 border-black neo-btn flex items-center justify-center gap-3">
+                    START BUILDING <i class="fas fa-rocket"></i>
+                </a>
+                <a href="/login"
+                    class="bg-white text-black px-8 py-4 text-xl font-black rounded-xl border-2 border-black neo-btn flex items-center justify-center gap-3">
+                    LOGIN <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div
+        class="border-y-4 border-black bg-[#ffc900] py-3 overflow-hidden relative z-20 shadow-[0_4px_0_0_rgba(0,0,0,1)]">
+        <div class="marquee-container text-xl font-black tracking-widest text-black">
+            <div class="whitespace-nowrap flex-shrink-0 w-1/2 flex justify-around items-center">
+                <span>✦ BUILD WEBSITES</span>
+                <span>✦ FULL-STACK APPS</span>
+                <span>✦ INSTANT DEPLOY</span>
+                <span>✦ NO SETUP</span>
+                <span>✦ GAMES & MORE</span>
+            </div>
+            <div class="whitespace-nowrap flex-shrink-0 w-1/2 flex justify-around items-center">
+                <span>✦ BUILD WEBSITES</span>
+                <span>✦ FULL-STACK APPS</span>
+                <span>✦ INSTANT DEPLOY</span>
+                <span>✦ NO SETUP</span>
+                <span>✦ GAMES & MORE</span>
             </div>
         </div>
     </div>
-    
-    <!-- Floating words background -->
-    <div class="fixed inset-0 pointer-events-none overflow-hidden" style="z-index: 1;">
-        <span class="floating-word" style="top: 20%; left: 10%; animation-delay: 0s;">JAVASCRIPT</span>
-        <span class="floating-word" style="top: 35%; left: 5%; animation-delay: 1s;">PYTHON</span>
-        <span class="floating-word" style="top: 50%; left: 15%; animation-delay: 2s;">THREE.JS</span>
-        <span class="floating-word" style="top: 65%; left: 8%; animation-delay: 3s;">GAMES</span>
-        <span class="floating-word" style="top: 80%; left: 12%; animation-delay: 4s;">APPS</span>
-        <span class="floating-word" style="top: 25%; left: 25%; animation-delay: 5s;">WEBGL</span>
-        <span class="floating-word" style="top: 45%; left: 20%; animation-delay: 6s;">HTML5</span>
-        <span class="floating-word" style="top: 70%; left: 22%; animation-delay: 7s;">CANVAS</span>
-    </div>
-    
-    <!-- Marquee -->
-    <div class="border-y border-gray-100 py-4 bg-white/50 backdrop-blur-sm" style="z-index: 10; position: relative;">
-        <div class="marquee">
-            <div class="marquee-inner text-sm tracking-widest text-gray-300">
-                ★ CREATE GAMES ★ BUILD WEBSITES ★ VISUAL CODING ★ INSTANT PUBLISH ★ NO CODE NEEDED ★ CREATE GAMES ★ BUILD WEBSITES ★ VISUAL CODING ★ INSTANT PUBLISH ★ NO CODE NEEDED ★
-            </div>
-        </div>
-    </div>
-    
-    <!-- Features -->
-    <div class="py-24 bg-white" style="position: relative; z-index: 10;">
+
+    <div class="py-24 bg-white border-b-4 border-black relative z-10">
         <div class="max-w-6xl mx-auto px-8">
-            <div class="grid md:grid-cols-3 gap-12">
-                <div class="group">
-                    <div class="w-12 h-12 border-2 border-black flex items-center justify-center mb-6 group-hover:bg-black group-hover:text-white transition">
-                        <i class="fas fa-gamepad text-xl"></i>
+            <div class="flex items-center gap-4 mb-12">
+                <h2 class="text-4xl font-black text-black">Superpowers Included</h2>
+                <div class="flex-1 border-b-4 border-black border-dashed mt-2"></div>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white border-2 border-black rounded-2xl p-6 neo-card group">
+                    <div
+                        class="w-14 h-14 bg-[#ff90e8] border-2 border-black rounded-xl flex items-center justify-center mb-6 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] group-hover:rotate-12 transition-transform">
+                        <i class="fas fa-keyboard text-2xl text-black"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-black mb-3">GAME ENGINE</h3>
-                    <p class="text-gray-500 leading-relaxed">
-                        Build addictive 2D games with our powerful Cato2D engine. Physics, animations, sound — all included.
+                    <h3 class="text-2xl font-black text-black mb-3">Web Editor</h3>
+                    <p class="text-slate-600 font-bold leading-relaxed">
+                        Colorful, powerful code editor. Auto-complete, syntax highlighting, and instant previews right
+                        in your browser.
                     </p>
                 </div>
-                
-                <div class="group">
-                    <div class="w-12 h-12 border-2 border-black flex items-center justify-center mb-6 group-hover:bg-black group-hover:text-white transition">
-                        <i class="fas fa-cubes text-xl"></i>
+
+                <div class="bg-white border-2 border-black rounded-2xl p-6 neo-card group">
+                    <div
+                        class="w-14 h-14 bg-[#20ffad] border-2 border-black rounded-xl flex items-center justify-center mb-6 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] group-hover:-rotate-12 transition-transform">
+                        <i class="fas fa-bolt text-2xl text-black"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-black mb-3">VISUAL BLOCKS</h3>
-                    <p class="text-gray-500 leading-relaxed">
-                        Drag, drop, and code. Our intuitive block system makes programming accessible to everyone.
+                    <h3 class="text-2xl font-black text-black mb-3">Instant Deploy</h3>
+                    <p class="text-slate-600 font-bold leading-relaxed">
+                        Click once to go live. We handle the boring stuff like free hosting and global delivery so you
+                        can focus on building.
                     </p>
                 </div>
-                
-                <div class="group">
-                    <div class="w-12 h-12 border-2 border-black flex items-center justify-center mb-6 group-hover:bg-black group-hover:text-white transition">
-                        <i class="fas fa-rocket text-xl"></i>
+
+                <div class="bg-white border-2 border-black rounded-2xl p-6 neo-card group">
+                    <div
+                        class="w-14 h-14 bg-[#4f46e5] border-2 border-black rounded-xl flex items-center justify-center mb-6 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] group-hover:rotate-12 transition-transform">
+                        <i class="fas fa-gamepad text-2xl text-white"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-black mb-3">INSTANT PUBLISH</h3>
-                    <p class="text-gray-500 leading-relaxed">
-                        Share your creations with the world in one click. Free hosting, custom domains, and global CDN.
+                    <h3 class="text-2xl font-black text-black mb-3">Share & Explore</h3>
+                    <p class="text-slate-600 font-bold leading-relaxed">
+                        Publish your games and websites instantly. Explore what others are building in the community and
+                        remix their projects to make them your own.
                     </p>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- CTA Section -->
-    <div class="py-24 bg-gray-50" style="position: relative; z-index: 10;">
-        <div class="max-w-3xl mx-auto px-8 text-center">
-            <h2 class="text-4xl md:text-5xl font-bold text-black mb-6 glitch">
+
+    <div class="py-24 bg-[#ff6b6b] relative z-10 overflow-hidden">
+        <i class="fas fa-star absolute top-10 left-10 text-5xl text-black opacity-20 transform rotate-45"></i>
+        <i class="fas fa-circle absolute bottom-10 right-20 text-6xl text-black opacity-20"></i>
+
+        <div class="max-w-3xl mx-auto px-8 text-center relative z-20">
+            <h2 class="text-5xl md:text-6xl font-black text-white mb-6 drop-shadow-[4px_4px_0_rgba(0,0,0,1)]">
                 READY TO CREATE?
             </h2>
-            <p class="text-gray-500 mb-10">
-                Join thousands of creators building the future of interactive web experiences.
+            <p
+                class="text-xl text-black font-black mb-10 bg-white inline-block px-4 py-2 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transform rotate-1">
+                Start your creative coding journey today.
             </p>
-            <a href="/register" class="btn-start inline-block">
-                GET STARTED FREE
-                <span class="ml-2">→</span>
+            <br>
+            <a href="/register"
+                class="bg-[#ffc900] text-black px-10 py-5 text-2xl font-black rounded-xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[8px] hover:translate-y-[8px] transition-all inline-flex items-center gap-3">
+                GET STARTED FREE <i class="fas fa-play"></i>
             </a>
         </div>
     </div>
-    
-    <!-- Footer -->
-    <footer class="py-8 bg-white border-t border-gray-100" style="position: relative; z-index: 10;">
-        <div class="max-w-6xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-2 text-gray-400 text-sm">
-                <i class="fas fa-code"></i>
-                <span>CatoCode © 2026</span>
+
+    <footer class="py-12 bg-white border-t-4 border-black relative z-10">
+        <div class="max-w-6xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-black border-2 border-black rounded-lg flex items-center justify-center">
+                    <i class="fas fa-code text-white text-sm"></i>
+                </div>
+                <span class="font-black text-black text-xl">CatoCode © 2026</span>
             </div>
-            <div class="flex gap-8 text-sm text-gray-400">
-                <a href="/marketplace" class="hover:text-black transition">MARKETPLACE</a>
-                <a href="/notebooks" class="hover:text-black transition">NOTEBOOKS</a>
-                <a href="/explore" class="hover:text-black transition">EXPLORE</a>
-                <a href="/sdk" class="hover:text-black transition">DOCS</a>
+            <div class="flex gap-6 font-bold">
+                <a href="/sdk" class="text-slate-500 hover:text-black hover:underline transition">Docs</a>
             </div>
         </div>
     </footer>
 </div>
-
-<script>
-    // Three.js Globe
-    let scene, camera, renderer, globe, globeGroup;
-    let mouseX = 0, mouseY = 0;
-    
-    function initGlobe() {
-        const container = document.getElementById('globe-container');
-        
-        scene = new THREE.Scene();
-        scene.background = null; // Transparent
-        
-        camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-        camera.position.set(0, 0, 5);
-        
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        container.appendChild(renderer.domElement);
-        
-        // Globe group for rotation
-        globeGroup = new THREE.Group();
-        scene.add(globeGroup);
-        
-        // Main globe sphere - dark with subtle gradient
-        const globeGeometry = new THREE.SphereGeometry(1.5, 64, 64);
-        const globeMaterial = new THREE.MeshPhongMaterial({
-            color: 0x1a1a1a,
-            emissive: 0x0a0a0a,
-            specular: 0x222222,
-            shininess: 10,
-        });
-        globe = new THREE.Mesh(globeGeometry, globeMaterial);
-        globeGroup.add(globe);
-        
-        // Glow effect sphere (outer)
-        const glowGeometry = new THREE.SphereGeometry(1.65, 32, 32);
-        const glowMaterial = new THREE.MeshBasicMaterial({
-            color: 0x6366f1,
-            transparent: true,
-            opacity: 0.15,
-            side: THREE.BackSide,
-        });
-        const glowSphere = new THREE.Mesh(glowGeometry, glowMaterial);
-        globeGroup.add(glowSphere);
-        
-        // Outer glow
-        const outerGlowGeometry = new THREE.SphereGeometry(1.85, 32, 32);
-        const outerGlowMaterial = new THREE.MeshBasicMaterial({
-            color: 0xa855f7,
-            transparent: true,
-            opacity: 0.08,
-            side: THREE.BackSide,
-        });
-        const outerGlow = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial);
-        globeGroup.add(outerGlow);
-        
-        // Wireframe overlay
-        const wireGeometry = new THREE.SphereGeometry(1.52, 32, 32);
-        const wireMaterial = new THREE.MeshBasicMaterial({
-            color: 0x6366f1,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.08,
-        });
-        const wireSphere = new THREE.Mesh(wireGeometry, wireMaterial);
-        globeGroup.add(wireSphere);
-        
-        // Grid lines
-        const gridHelper = new THREE.PolarGridHelper(1.6, 16, 8, 64, 0x6366f1, 0xa855f7);
-        gridHelper.material.transparent = true;
-        gridHelper.material.opacity = 0.15;
-        globeGroup.add(gridHelper);
-        
-        // Points on globe
-        const pointsGeometry = new THREE.BufferGeometry();
-        const pointsCount = 400;
-        const positions = new Float32Array(pointsCount * 3);
-        
-        for (let i = 0; i < pointsCount; i++) {
-            const phi = Math.acos(-1 + (2 * i) / pointsCount);
-            const theta = Math.sqrt(pointsCount * Math.PI) * phi;
-            
-            const x = 1.5 * Math.cos(theta) * Math.sin(phi);
-            const y = 1.5 * Math.sin(theta) * Math.sin(phi);
-            const z = 1.5 * Math.cos(phi);
-            
-            positions[i * 3] = x;
-            positions[i * 3 + 1] = y;
-            positions[i * 3 + 2] = z;
-        }
-        
-        pointsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        
-        const pointsMaterial = new THREE.PointsMaterial({
-            color: 0x6366f1,
-            size: 0.025,
-            transparent: true,
-            opacity: 0.8,
-        });
-        
-        const points = new THREE.Points(pointsGeometry, pointsMaterial);
-        globeGroup.add(points);
-        
-        // Connecting lines (random connections between points)
-        const lineMaterial = new THREE.LineBasicMaterial({
-            color: 0x000000,
-            transparent: true,
-            opacity: 0.15,
-        });
-        
-        for (let i = 0; i < 50; i++) {
-            const startIdx = Math.floor(Math.random() * pointsCount);
-            const endIdx = Math.floor(Math.random() * pointsCount);
-            
-            if (startIdx !== endIdx) {
-                const startPos = new THREE.Vector3(
-                    positions[startIdx * 3],
-                    positions[startIdx * 3 + 1],
-                    positions[startIdx * 3 + 2]
-                );
-                const endPos = new THREE.Vector3(
-                    positions[endIdx * 3],
-                    positions[endIdx * 3 + 1],
-                    positions[endIdx * 3 + 2]
-                );
-                
-                const lineGeometry = new THREE.BufferGeometry().setFromPoints([startPos, endPos]);
-                const line = new THREE.Line(lineGeometry, lineMaterial);
-                globeGroup.add(line);
-            }
-        }
-        
-        // Orbit rings
-        const ringGeometry1 = new THREE.RingGeometry(1.8, 1.82, 64);
-        const ringMaterial = new THREE.MeshBasicMaterial({
-            color: 0x6366f1,
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.2,
-        });
-        const ring1 = new THREE.Mesh(ringGeometry1, ringMaterial);
-        ring1.rotation.x = Math.PI / 2;
-        globeGroup.add(ring1);
-        
-        const ring2 = new THREE.RingGeometry(2.2, 2.22, 64);
-        const ringMaterial2 = new THREE.MeshBasicMaterial({
-            color: 0xa855f7,
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.1,
-        });
-        const ring2Mesh = new THREE.Mesh(ring2, ringMaterial2);
-        ring2Mesh.rotation.x = Math.PI / 3;
-        globeGroup.add(ring2Mesh);
-        
-        // Lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
-        scene.add(ambientLight);
-        
-        // Main light - purple/indigo
-        const directionalLight = new THREE.DirectionalLight(0x6366f1, 1.2);
-        directionalLight.position.set(5, 5, 5);
-        scene.add(directionalLight);
-        
-        // Secondary light - pink/purple
-        const pointLight = new THREE.PointLight(0xa855f7, 0.8);
-        pointLight.position.set(-5, -5, 5);
-        scene.add(pointLight);
-        
-        // Rim light
-        const rimLight = new THREE.PointLight(0x22d3ee, 0.5);
-        rimLight.position.set(0, -5, -5);
-        scene.add(rimLight);
-        
-        // Mouse interaction
-        document.addEventListener('mousemove', (event) => {
-            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
-            mouseY = (event.clientY / window.innerHeight) * 2 - 1;
-        });
-        
-        // Resize
-        window.addEventListener('resize', () => {
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-        });
-    }
-    
-    function animateGlobe() {
-        requestAnimationFrame(animateGlobe);
-        
-        // Rotate globe
-        globeGroup.rotation.y += 0.002;
-        globeGroup.rotation.x += 0.001;
-        
-        // Mouse interaction
-        globeGroup.rotation.y += mouseX * 0.001;
-        globeGroup.rotation.x += mouseY * 0.001;
-        
-        renderer.render(scene, camera);
-    }
-    
-    // Text animations
-    function animateText() {
-        const tagline = document.getElementById('tagline');
-        const taglineText = '// THE FUTURE OF CODING';
-        tagline.innerHTML = '';
-        
-        taglineText.split('').forEach((char, i) => {
-            const span = document.createElement('span');
-            span.className = 'char';
-            span.textContent = char === ' ' ? '\u00A0' : char;
-            span.style.animationDelay = `${i * 0.05}s`;
-            tagline.appendChild(span);
-        });
-        
-        // Animate headline words
-        const headline = document.getElementById('headline');
-        headline.querySelectorAll('span').forEach((span, i) => {
-            span.style.animation = `charReveal 0.5s ease forwards`;
-            span.style.animationDelay = `${0.5 + i * 0.15}s`;
-            span.style.opacity = '0';
-        });
-        
-        // Animate description
-        const desc = document.getElementById('description');
-        desc.style.opacity = '0';
-        desc.style.transform = 'translateY(20px)';
-        desc.style.transition = 'all 0.5s ease';
-        setTimeout(() => {
-            desc.style.opacity = '1';
-            desc.style.transform = 'translateY(0)';
-        }, 1500);
-        
-        // Animate CTA
-        const cta = document.getElementById('cta');
-        cta.style.opacity = '0';
-        cta.style.transform = 'translateY(20px)';
-        cta.style.transition = 'all 0.5s ease';
-        setTimeout(() => {
-            cta.style.opacity = '1';
-            cta.style.transform = 'translateY(0)';
-        }, 1800);
-        
-        // Animate stats
-        const stats = document.getElementById('stats');
-        stats.style.opacity = '0';
-        stats.style.transform = 'translateY(20px)';
-        stats.style.transition = 'all 0.5s ease';
-        setTimeout(() => {
-            stats.style.opacity = '1';
-            stats.style.transform = 'translateY(0)';
-        }, 2000);
-    }
-    
-    // Initialize
-    initGlobe();
-    animateGlobe();
-    animateText();
-</script>
 {% endblock %}

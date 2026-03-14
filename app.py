@@ -3,6 +3,7 @@ import uuid
 import base64
 import mimetypes
 import io
+import imghdr
 import sys
 import os
 import secrets
@@ -12,9 +13,24 @@ from flask import Flask, render_template, request, jsonify, Response, redirect, 
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
+# ===== DATABASE CONFIGURATION =====
+# Set to 'postgres' to use PostgreSQL, or 'sqlite' to use SQLite
+DATABASE_TYPE = os.environ.get('DATABASE_TYPE', 'sqlite')
+
+# PostgreSQL connection settings (used when DATABASE_TYPE = 'postgres')
+POSTGRES_CONFIG = {
+    'host': os.environ.get('POSTGRES_HOST', 'localhost'),
+    'port': os.environ.get('POSTGRES_PORT', '5432'),
+    'database': os.environ.get('POSTGRES_DB', 'catocode'),
+    'user': os.environ.get('POSTGRES_USER', 'postgres'),
+    'password': os.environ.get('POSTGRES_PASSWORD', '')
+}
+
+# SQLite database file (used when DATABASE_TYPE = 'sqlite')
+DATABASE = 'database.db'
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'catocode-ultra-secret-2025'
-DATABASE = 'database.db'
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -31,19 +47,114 @@ def load_user(uid):
 
 def get_db():
     db = getattr(g, '_database', None)
-    if db is None: db = g._database = sqlite3.connect(DATABASE); db.row_factory = sqlite3.Row
-    return db
+    if db is None:
+        if DATABASE_TYPE == 'postgres':
+            import psycopg2
+            from psycopg2.extras import RealDictCursor
+            conn = psycopg2.connect(
+                host=POSTGRES_CONFIG['host'],
+                port=POSTGRES_CONFIG['port'],
+                database=POSTGRES_CONFIG['database'],
+                user=POSTGRES_CONFIG['user'],
+                password=POSTGRES_CONFIG['password']
+            )
+            conn.row_factory = RealDictCursor
+            db = g._database = conn
+        else:
+            db = g._database = sqlite3.connect(DATABASE)
+            db.row_factory = sqlite3.Row
+    
+    # Return a wrapper that handles placeholder conversion
+    return DBWrapper(db, DATABASE_TYPE)
+
+class DBWrapper:
+    """Wrapper for database connections that handles SQLite/PostgreSQL differences"""
+    
+    def __init__(self, conn, db_type):
+        self._conn = conn
+        self._db_type = db_type
+        self._cursor = None
+    
+    def _convert_query(self, query, args):
+        """Convert SQLite ? placeholders to PostgreSQL %s"""
+        if self._db_type == 'postgres' and '?' in query:
+            return query.replace('?', '%s'), args
+        return query, args
+    
+    def execute(self, query, args=()):
+        query, args = self._convert_query(query, args)
+        self._cursor = self._conn.cursor()
+        self._cursor.execute(query, args)
+        return self
+    
+    def executescript(self, script):
+        """Only available for SQLite"""
+        if self._db_type == 'sqlite':
+            self._cursor = self._conn.cursor()
+            self._cursor.executescript(script)
+        else:
+            # For PostgreSQL, execute statements one by one
+            statements = [s.strip() for s in script.split(';') if s.strip()]
+            self._cursor = self._conn.cursor()
+            for stmt in statements:
+                if stmt and not stmt.startswith('--'):
+                    self._cursor.execute(stmt)
+        return self
+    
+    def fetchone(self):
+        if self._cursor:
+            return self._cursor.fetchone()
+        return None
+    
+    def fetchall(self):
+        if self._cursor:
+            return self._cursor.fetchall()
+        return []
+    
+    def commit(self):
+        self._conn.commit()
+    
+    def close(self):
+        if self._cursor:
+            self._cursor.close()
+        self._conn.close()
+    
+    @property
+    def cursor(self):
+        if not self._cursor:
+            self._cursor = self._conn.cursor()
+        return self._cursor
 
 @app.teardown_appcontext
 def close_connection(e): 
     db = getattr(g, '_database', None)
-    if db: db.close()
+    if db: 
+        db.close()
 
 def init_db():
     with app.app_context():
         db = get_db()
-        with app.open_resource('schema.sql', mode='r') as f: db.cursor().executescript(f.read())
-        db.commit()
+        if DATABASE_TYPE == 'postgres':
+            # PostgreSQL schema - need to convert from SQLite syntax
+            with app.open_resource('schema.sql', mode='r') as f:
+                schema = f.read()
+            # Convert SQLite-specific syntax to PostgreSQL
+            schema = schema.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+            schema = schema.replace('AUTOINCREMENT', '')
+            # Execute each statement separately
+            statements = schema.split(';')
+            cursor = db.cursor()
+            for stmt in statements:
+                stmt = stmt.strip()
+                if stmt and not stmt.startswith('--'):
+                    try:
+                        cursor.execute(stmt)
+                    except Exception as e:
+                        print(f"Error executing: {stmt[:50]}... - {e}")
+            db.commit()
+        else:
+            with app.open_resource('schema.sql', mode='r') as f: db.cursor().executescript(f.read())
+            db.commit()
 
 def ensure_gamedev_tables():
     db = get_db()
@@ -65,530 +176,33 @@ def ensure_gamedev_tables():
 @app.cli.command('initdb')
 def initdb_command(): init_db()
 
-# --- TEMPLATES ---
-TEMPLATES = {
-    'blank': [('index.html', b'<h1>Hello World</h1>'), ('server.py', b'response = "Ready"')],
-    'threejs': [
-        ('index.html', b'<!DOCTYPE html><html><body style="margin:0"><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script src="app.js"></script></body></html>'),
-        ('app.js', b'const scene = new THREE.Scene();\nconst camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);\nconst renderer = new THREE.WebGLRenderer();\nrenderer.setSize(window.innerWidth, window.innerHeight);\ndocument.body.appendChild(renderer.domElement);\nconst cube = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial({color: 0x00ff00}));\nscene.add(cube); camera.position.z = 5;\nfunction animate() { requestAnimationFrame(animate); cube.rotation.x += 0.01; cube.rotation.y += 0.01; renderer.render(scene, camera); }\nanimate();')
-    ],
-    'phaser': [
-        ('index.html', b'<!DOCTYPE html><html><body><script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script><script src="app.js"></script></body></html>'),
-        ('app.js', b'new Phaser.Game({ type: Phaser.AUTO, width: 800, height: 600, scene: { create: function() { this.add.text(100, 100, "Phaser Active!", { fontSize: "64px", fill: "#fff" }); } } });')
-    ],
-    'kaboom': [
-        ('index.html', b'<!DOCTYPE html><html><body><script src="https://unpkg.com/kaboom/dist/kaboom.js"></script><script src="app.js"></script></body></html>'),
-        ('app.js', b'kaboom();\nadd([text("CatoCode!"), pos(120, 80)]);')
-    ],
-    'serverless_api': [
-        ('index.html', b'''<!DOCTYPE html>
-<html><head><title>Serverless API Demo</title>
-<style>body{font-family:sans-serif;max-width:600px;margin:40px auto;padding:20px}button{background:#3b82f6;color:#fff;border:none;padding:12px 24px;border-radius:8px;cursor:pointer;font-size:16px}button:hover{background:#2563eb}#result{margin-top:20px;padding:20px;background:#f1f5f9;border-radius:8px;font-family:monospace}</style>
-</head><body>
-<h1>Serverless API Demo</h1>
-<p>Click the button to call your backend function:</p>
-<button onclick="callAPI()">Call API</button>
-<div id="result"></div>
-<script>
-const uid = typeof PROJECT_UID !== "undefined" ? PROJECT_UID : "demo";
-async function callAPI() {
-  const res = await fetch("/api/run-function/" + uid, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action: "hello"})});
-  document.getElementById("result").textContent = JSON.stringify(await res.json(), null, 2);
-}
-</script></body></html>'''),
-        ('server.py', b'''# Serverless function example\n# Access db.get(key) and db.set(key, value) for storage\n\nvisits = int(db.get("visits") or 0) + 1\ndb.set("visits", str(visits))\n\nif request.get("action") == "hello":\n    response = {"message": "Hello from CatoCode!", "total_visits": visits}\nelse:\n    response = {"error": "Unknown action", "visits": visits}''')
-    ],
-    'serverless_crud': [
-        ('index.html', b'''<!DOCTYPE html>
-<html><head><title>CRUD App</title>
-<style>*{box-sizing:border-box}body{font-family:system-ui;max-width:800px;margin:0 auto;padding:40px;background:#f8fafc}h1{color:#1e293b}.card{background:#fff;padding:24px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.08);margin-bottom:20px}input,textarea{width:100%;padding:12px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:12px}button{background:#3b82f6;color:#fff;border:none;padding:12px 24px;border-radius:8px;cursor:pointer}button:hover{background:#2563eb}.item{padding:16px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center}.delete{background:#ef4444;padding:8px 16px;font-size:14px}</style>
-</head><body>
-<h1>Simple CRUD App</h1>
-<div class="card"><h3>Add New Item</h3>
-<input id="title" placeholder="Title"><textarea id="content" placeholder="Content" rows="3"></textarea>
-<button onclick="addItem()">Add Item</button></div>
-<div class="card" id="items"><h3>Items</h3><div id="list">Loading...</div></div>
-<script>
-const uid = typeof PROJECT_UID !== "undefined" ? PROJECT_UID : "demo";
-async function api(data) { return (await fetch("/api/run-function/" + uid, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data)})).json(); }
-async function load() { const r = await api({action:"list"}); document.getElementById("list").innerHTML = (r.result?.items || []).map(i => `<div class="item"><div><strong>${i.title}</strong><br><small>${i.content}</small></div><button class="delete" onclick="del('${i.id}')">Delete</button></div>`).join("") || "No items yet"; }
-async function addItem() { await api({action:"add", title: document.getElementById("title").value, content: document.getElementById("content").value}); document.getElementById("title").value = ""; document.getElementById("content").value = ""; load(); }
-async function del(id) { await api({action:"delete", id}); load(); }
-load();
-</script></body></html>'''),
-        ('server.py', b'''# CRUD Serverless App\nimport json\n\n# Load existing items\nitems = json.loads(db.get("items") or "[]")\n\naction = request.get("action")\n\nif action == "list":\n    response = {"items": items}\nelif action == "add":\n    new_id = str(len(items) + 1)\n    items.append({"id": new_id, "title": request.get("title", ""), "content": request.get("content", "")})\n    db.set("items", json.dumps(items))\n    response = {"success": True, "id": new_id}\nelif action == "delete":\n    items = [i for i in items if i["id"] != request.get("id")]\n    db.set("items", json.dumps(items))\n    response = {"success": True}\nelse:\n    response = {"error": "Unknown action"}''')
-    ],
-    'serverless_auth': [
-        ('index.html', b'''<!DOCTYPE html>
-<html><head><title>Auth Demo</title>
-<style>body{font-family:system-ui;max-width:400px;margin:100px auto;padding:20px}.card{background:#fff;padding:32px;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.1)}h2{margin-top:0;color:#1e293b}input{width:100%;padding:14px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:16px;font-size:16px}button{width:100%;background:#3b82f6;color:#fff;border:none;padding:14px;border-radius:10px;font-size:16px;cursor:pointer}button:hover{background:#2563eb}.msg{padding:12px;border-radius:8px;margin-bottom:16px}.error{background:#fef2f2;color:#dc2626}.success{background:#f0fdf4;color:#16a34a}</style>
-</head><body><div class="card">
-<h2>Login / Register</h2>
-<div id="msg"></div>
-<input id="user" placeholder="Username"><input id="pass" type="password" placeholder="Password">
-<button onclick="auth('login')">Login</button><br><br>
-<button onclick="auth('register')" style="background:#10b981">Register</button>
-</div><script>
-const uid = typeof PROJECT_UID !== "undefined" ? PROJECT_UID : "demo";
-async function auth(action) {
-  const r = await (await fetch("/api/run-function/" + uid, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action, username: document.getElementById("user").value, password: document.getElementById("pass").value})})).json();
-  document.getElementById("msg").innerHTML = r.result?.success ? `<div class="msg success">${r.result.message}</div>` : `<div class="msg error">${r.result?.error || "Error"}</div>`;
-}
-</script></body></html>'''),
-        ('server.py', b'''# Simple Auth System\nimport hashlib\nimport json\n\nusers = json.loads(db.get("users") or "{}")\naction = request.get("action")\nusername = request.get("username", "").strip()\npassword = request.get("password", "")\npwd_hash = hashlib.sha256(password.encode()).hexdigest()\n\nif action == "register":\n    if not username or not password:\n        response = {"error": "Username and password required"}\n    elif username in users:\n        response = {"error": "Username already exists"}\n    else:\n        users[username] = pwd_hash\n        db.set("users", json.dumps(users))\n        response = {"success": True, "message": f"User {username} registered!"}\nelif action == "login":\n    if users.get(username) == pwd_hash:\n        response = {"success": True, "message": f"Welcome back, {username}!"}\n    else:\n        response = {"error": "Invalid credentials"}\nelse:\n    response = {"error": "Unknown action"}''')
-    ],
-    # ===== GAME TEMPLATES =====
-    'game_platformer': [
-        ('index.html', b'<!DOCTYPE html><html><head><title>Platformer</title><style>*{margin:0;padding:0}body{background:#1a1a2e;display:flex;justify-content:center;align-items:center;min-height:100vh}canvas{border:4px solid #16213e;border-radius:8px}</style></head><body><canvas id="game"></canvas><script src="game.js"></script></body></html>'),
-        ('game.js', b'''// ========== SCROLLING PLATFORMER ==========
-const GAME_TITLE = "Super Jumper";
-const PLAYER_SPEED = 5;
-const JUMP_FORCE = 14;
-const GRAVITY = 0.6;
-const WORLD_WIDTH = 3000;  // World is wider than canvas
-
-// COLORS
-const PLAYER_COLOR = "#00ff88";
-const PLATFORM_COLOR = "#4a4e69";
-const BG_COLOR = "#1a1a2e";
-const SKY_COLOR = "#0f172a";
-// ==========================================
-
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-canvas.width = 800; canvas.height = 600;
-
-let camera = { x: 0 };
-let player = { x: 100, y: 400, w: 40, h: 50, vx: 0, vy: 0, onGround: false, score: 0 };
-
-// Generate platforms across the world
-let platforms = [
-    { x: 0, y: 550, w: 500, h: 50 },
-    { x: 400, y: 450, w: 200, h: 20 },
-    { x: 700, y: 380, w: 150, h: 20 },
-    { x: 950, y: 480, w: 300, h: 20 },
-    { x: 1100, y: 350, w: 120, h: 20 },
-    { x: 1350, y: 280, w: 150, h: 20 },
-    { x: 1550, y: 200, w: 100, h: 20 },
-    { x: 1700, y: 550, w: 400, h: 50 },
-    { x: 1850, y: 420, w: 150, h: 20 },
-    { x: 2100, y: 350, w: 200, h: 20 },
-    { x: 2350, y: 280, w: 150, h: 20 },
-    { x: 2550, y: 550, w: 450, h: 50 },
-    { x: 2700, y: 400, w: 200, h: 20 },
-    { x: 2850, y: 300, w: 150, h: 20 }
-];
-let coins = [
-    {x:300,y:520},{x:500,y:420},{x:800,y:350},{x:1050,y:450},
-    {x:1200,y:320},{x:1450,y:250},{x:1600,y:170},{x:1950,y:390},
-    {x:2200,y:320},{x:2450,y:250},{x:2750,y:370},{x:2900,y:270}
-].map(c=>({...c,r:15,got:false}));
-
-let keys = {};
-document.addEventListener("keydown", e => keys[e.code] = true);
-document.addEventListener("keyup", e => keys[e.code] = false);
-
-function update() {
-    // Movement
-    if (keys["ArrowLeft"]||keys["KeyA"]) player.vx = -PLAYER_SPEED;
-    else if (keys["ArrowRight"]||keys["KeyD"]) player.vx = PLAYER_SPEED;
-    else player.vx = 0;
-    if ((keys["ArrowUp"]||keys["KeyW"]||keys["Space"]) && player.onGround) {
-        player.vy = -JUMP_FORCE; player.onGround = false;
-    }
-    
-    player.vy += GRAVITY;
-    player.x += player.vx;
-    player.y += player.vy;
-    player.onGround = false;
-    
-    // Collision with platforms
-    for (let p of platforms) {
-        if (player.x < p.x+p.w && player.x+player.w > p.x && 
-            player.y+player.h > p.y && player.y+player.h < p.y+p.h+player.vy) {
-            player.y = p.y - player.h; player.vy = 0; player.onGround = true;
-        }
-    }
-    
-    // Collect coins
-    for (let c of coins) {
-        if (!c.got && Math.hypot((player.x+player.w/2)-c.x,(player.y+player.h/2)-c.y) < c.r+20) {
-            c.got = true; player.score++;
-        }
-    }
-    
-    // World bounds
-    if (player.x < 0) player.x = 0;
-    if (player.x > WORLD_WIDTH - player.w) player.x = WORLD_WIDTH - player.w;
-    if (player.y > canvas.height + 100) { player.y = 400; player.x = 100; }
-    
-    // Camera follows player (smooth)
-    const targetCam = player.x - canvas.width/2 + player.w/2;
-    camera.x += (targetCam - camera.x) * 0.1;
-    if (camera.x < 0) camera.x = 0;
-    if (camera.x > WORLD_WIDTH - canvas.width) camera.x = WORLD_WIDTH - canvas.width;
-}
-
-function draw() {
-    // Sky gradient
-    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, SKY_COLOR);
-    grad.addColorStop(1, BG_COLOR);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    ctx.save();
-    ctx.translate(-camera.x, 0);
-    
-    // Draw platforms
-    ctx.fillStyle = PLATFORM_COLOR;
-    for (let p of platforms) ctx.fillRect(p.x, p.y, p.w, p.h);
-    
-    // Draw coins
-    for (let c of coins) {
-        if (!c.got) {
-            ctx.beginPath();
-            ctx.arc(c.x, c.y, c.r, 0, Math.PI*2);
-            ctx.fillStyle = "#ffd700";
-            ctx.fill();
-            ctx.strokeStyle = "#b8860b";
-            ctx.stroke();
-        }
-    }
-    
-    // Draw player
-    ctx.fillStyle = PLAYER_COLOR;
-    ctx.fillRect(player.x, player.y, player.w, player.h);
-    
-    ctx.restore();
-    
-    // UI (fixed on screen)
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 24px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText(GAME_TITLE, 20, 35);
-    ctx.textAlign = "right";
-    ctx.fillText("Coins: " + player.score + "/" + coins.length, canvas.width - 20, 35);
-    
-    // Progress bar
-    const progress = player.x / WORLD_WIDTH;
-    ctx.fillStyle = "#333";
-    ctx.fillRect(20, canvas.height - 30, canvas.width - 40, 10);
-    ctx.fillStyle = "#10b981";
-    ctx.fillRect(20, canvas.height - 30, (canvas.width - 40) * progress, 10);
-    
-    // Win screen
-    if (player.score === coins.length) {
-        ctx.fillStyle = "rgba(0,0,0,0.7)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#ffd700";
-        ctx.font = "bold 48px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("YOU WIN!", canvas.width/2, canvas.height/2);
-    }
-}
-
-function loop() { update(); draw(); requestAnimationFrame(loop); }
-loop();''')
-    ],
-    'game_snake': [
-        ('index.html', b'<!DOCTYPE html><html><head><title>Snake</title><style>*{margin:0;padding:0}body{background:#0d1117;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;font-family:sans-serif;color:#fff}canvas{border:4px solid #30363d;border-radius:8px}h1{margin-bottom:20px;color:#58a6ff}</style></head><body><h1>Snake</h1><canvas id="game"></canvas><p style="margin-top:20px;color:#8b949e">Arrow Keys to Move</p><script src="game.js"></script></body></html>'),
-        ('game.js', b'''// ========== CUSTOMIZE YOUR GAME ==========
-const SNAKE_COLOR = "#58a6ff";
-const FOOD_COLOR = "#f85149";
-const GRID_SIZE = 20;
-const GAME_SPEED = 100;
-// ==========================================
-
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-canvas.width = 400; canvas.height = 400;
-let snake = [{x:10,y:10}], food = {x:15,y:10}, dir = {x:1,y:0}, score = 0, over = false;
-
-document.addEventListener("keydown", e => {
-    if(e.key==="ArrowUp"&&dir.y!==1)dir={x:0,y:-1};
-    if(e.key==="ArrowDown"&&dir.y!==-1)dir={x:0,y:1};
-    if(e.key==="ArrowLeft"&&dir.x!==1)dir={x:-1,y:0};
-    if(e.key==="ArrowRight"&&dir.x!==-1)dir={x:1,y:0};
-    if(over&&e.key===" ")location.reload();
-});
-
-function spawnFood(){food={x:Math.floor(Math.random()*(canvas.width/GRID_SIZE)),y:Math.floor(Math.random()*(canvas.height/GRID_SIZE))};}
-
-function update() {
-    if(over)return;
-    const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
-    if(head.x<0||head.x>=canvas.width/GRID_SIZE||head.y<0||head.y>=canvas.height/GRID_SIZE){over=true;return;}
-    for(let s of snake)if(head.x===s.x&&head.y===s.y){over=true;return;}
-    snake.unshift(head);
-    if(head.x===food.x&&head.y===food.y){score+=10;spawnFood();}else snake.pop();
-}
-
-function draw() {
-    ctx.fillStyle="#0d1117";ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle=SNAKE_COLOR;
-    for(let s of snake)ctx.fillRect(s.x*GRID_SIZE+1,s.y*GRID_SIZE+1,GRID_SIZE-2,GRID_SIZE-2);
-    ctx.fillStyle=FOOD_COLOR;ctx.beginPath();ctx.arc(food.x*GRID_SIZE+GRID_SIZE/2,food.y*GRID_SIZE+GRID_SIZE/2,GRID_SIZE/2-2,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="#fff";ctx.font="bold 16px sans-serif";ctx.fillText("Score: "+score,10,25);
-    if(over){ctx.fillStyle="rgba(0,0,0,0.8)";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle=FOOD_COLOR;ctx.font="bold 36px sans-serif";ctx.textAlign="center";ctx.fillText("GAME OVER",canvas.width/2,canvas.height/2-20);ctx.fillStyle="#fff";ctx.font="20px sans-serif";ctx.fillText("Score: "+score,canvas.width/2,canvas.height/2+20);ctx.fillText("SPACE to restart",canvas.width/2,canvas.height/2+50);}
-}
-setInterval(()=>{update();draw();},GAME_SPEED);''')
-    ],
-    'game_flappy': [
-        ('index.html', b'<!DOCTYPE html><html><head><title>Flappy</title><style>*{margin:0;padding:0}body{background:#70c5ce;display:flex;justify-content:center;align-items:center;min-height:100vh}canvas{border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.3)}</style></head><body><canvas id="game"></canvas><script src="game.js"></script></body></html>'),
-        ('game.js', b'''// ========== CUSTOMIZE YOUR GAME ==========
-const BIRD_COLOR = "#f7dc6f";
-const PIPE_COLOR = "#27ae60";
-const GRAVITY = 0.4;
-const FLAP_FORCE = -7;
-const PIPE_SPEED = 3;
-const PIPE_GAP = 150;
-// ==========================================
-
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-canvas.width = 400; canvas.height = 600;
-let bird = {x:80,y:300,vy:0,size:25}, pipes = [], score = 0, over = false, started = false;
-
-document.addEventListener("keydown", e => { if(e.code==="Space"){if(!started)started=true;if(!over)bird.vy=FLAP_FORCE;if(over)location.reload();} });
-canvas.addEventListener("click", () => { if(!started)started=true;if(!over)bird.vy=FLAP_FORCE;if(over)location.reload(); });
-
-function spawnPipe(){pipes.push({x:canvas.width,gapY:Math.random()*(canvas.height-200-PIPE_GAP)+100,scored:false});}
-
-function update() {
-    if(!started||over)return;
-    bird.vy+=GRAVITY;bird.y+=bird.vy;
-    if(pipes.length===0||pipes[pipes.length-1].x<canvas.width-200)spawnPipe();
-    for(let i=pipes.length-1;i>=0;i--){
-        pipes[i].x-=PIPE_SPEED;
-        if(!pipes[i].scored&&pipes[i].x+60<bird.x){pipes[i].scored=true;score++;}
-        if(pipes[i].x<-70)pipes.splice(i,1);
-        const p=pipes[i];
-        if(bird.x+bird.size>p.x&&bird.x-bird.size<p.x+60){if(bird.y-bird.size<p.gapY||bird.y+bird.size>p.gapY+PIPE_GAP)over=true;}
-    }
-    if(bird.y+bird.size>canvas.height-80||bird.y-bird.size<0)over=true;
-}
-
-function draw() {
-    ctx.fillStyle="#70c5ce";ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle=PIPE_COLOR;
-    for(let p of pipes){ctx.fillRect(p.x,0,60,p.gapY);ctx.fillRect(p.x,p.gapY+PIPE_GAP,60,canvas.height);}
-    ctx.fillStyle="#ded895";ctx.fillRect(0,canvas.height-80,canvas.width,80);
-    ctx.fillStyle=BIRD_COLOR;ctx.beginPath();ctx.arc(bird.x,bird.y,bird.size,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="#fff";ctx.font="bold 48px sans-serif";ctx.textAlign="center";ctx.fillText(score,canvas.width/2,80);
-    if(!started){ctx.fillStyle="rgba(0,0,0,0.5)";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle="#fff";ctx.font="bold 32px sans-serif";ctx.fillText("Tap or Space",canvas.width/2,canvas.height/2);}
-    if(over){ctx.fillStyle="rgba(0,0,0,0.7)";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle="#e74c3c";ctx.font="bold 42px sans-serif";ctx.fillText("GAME OVER",canvas.width/2,canvas.height/2-30);ctx.fillStyle="#fff";ctx.font="24px sans-serif";ctx.fillText("Score: "+score,canvas.width/2,canvas.height/2+20);}
-}
-function loop(){update();draw();requestAnimationFrame(loop);}loop();''')
-    ],
-    'game_pong': [
-        ('index.html', b'<!DOCTYPE html><html><head><title>Pong</title><style>*{margin:0;padding:0}body{background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh}canvas{border:4px solid #333}</style></head><body><canvas id="game"></canvas><script src="game.js"></script></body></html>'),
-        ('game.js', b'''// ========== CUSTOMIZE YOUR GAME ==========
-const PADDLE_COLOR = "#fff";
-const BALL_COLOR = "#fff";
-const PADDLE_SPEED = 8;
-const BALL_SPEED = 6;
-const WINNING_SCORE = 5;
-// ==========================================
-
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-canvas.width = 800; canvas.height = 500;
-let player = {x:20,y:200,w:15,h:100}, ai = {x:canvas.width-35,y:200,w:15,h:100};
-let ball = {x:canvas.width/2,y:canvas.height/2,vx:BALL_SPEED,vy:BALL_SPEED*0.5,r:10};
-let playerScore = 0, aiScore = 0, keys = {};
-
-document.addEventListener("keydown", e => keys[e.code] = true);
-document.addEventListener("keyup", e => keys[e.code] = false);
-
-function resetBall(){ball.x=canvas.width/2;ball.y=canvas.height/2;ball.vx=BALL_SPEED*(Math.random()>0.5?1:-1);ball.vy=BALL_SPEED*0.5*(Math.random()>0.5?1:-1);}
-
-function update() {
-    if((keys["ArrowUp"]||keys["KeyW"])&&player.y>0)player.y-=PADDLE_SPEED;
-    if((keys["ArrowDown"]||keys["KeyS"])&&player.y+player.h<canvas.height)player.y+=PADDLE_SPEED;
-    const aiCenter=ai.y+ai.h/2;
-    if(aiCenter<ball.y-20)ai.y+=PADDLE_SPEED*0.7;
-    if(aiCenter>ball.y+20)ai.y-=PADDLE_SPEED*0.7;
-    ball.x+=ball.vx;ball.y+=ball.vy;
-    if(ball.y-ball.r<0||ball.y+ball.r>canvas.height)ball.vy*=-1;
-    if(ball.x-ball.r<player.x+player.w&&ball.y>player.y&&ball.y<player.y+player.h){ball.vx=Math.abs(ball.vx);ball.vy=(ball.y-(player.y+player.h/2))*0.1;}
-    if(ball.x+ball.r>ai.x&&ball.y>ai.y&&ball.y<ai.y+ai.h){ball.vx=-Math.abs(ball.vx);ball.vy=(ball.y-(ai.y+ai.h/2))*0.1;}
-    if(ball.x<0){aiScore++;resetBall();}
-    if(ball.x>canvas.width){playerScore++;resetBall();}
-}
-
-function draw() {
-    ctx.fillStyle="#000";ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.setLineDash([10,10]);ctx.strokeStyle="#333";ctx.beginPath();ctx.moveTo(canvas.width/2,0);ctx.lineTo(canvas.width/2,canvas.height);ctx.stroke();ctx.setLineDash([]);
-    ctx.fillStyle=PADDLE_COLOR;ctx.fillRect(player.x,player.y,player.w,player.h);ctx.fillRect(ai.x,ai.y,ai.w,ai.h);
-    ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fillStyle=BALL_COLOR;ctx.fill();
-    ctx.font="bold 64px monospace";ctx.textAlign="center";ctx.fillText(playerScore,canvas.width/4,70);ctx.fillText(aiScore,canvas.width*3/4,70);
-    if(playerScore>=WINNING_SCORE||aiScore>=WINNING_SCORE){ctx.fillStyle="rgba(0,0,0,0.8)";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle=playerScore>=WINNING_SCORE?"#2ecc71":"#e74c3c";ctx.font="bold 48px sans-serif";ctx.fillText(playerScore>=WINNING_SCORE?"YOU WIN!":"AI WINS!",canvas.width/2,canvas.height/2);}
-}
-function loop(){update();draw();requestAnimationFrame(loop);}loop();''')
-    ],
-    # ===== BLOCK-BASED GAME BUILDER =====
-    'game_blocks': [
-        ('index.html', b'<!DOCTYPE html><html><body><script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script><script src="app.js"></script></body></html>'),
-        ('app.js', b'new Phaser.Game({ type: Phaser.AUTO, width: 800, height: 600, scene: { create: function() { this.add.text(100, 100, "Phaser Active!", { fontSize: "64px", fill: "#fff" }); } } });')
-    ] + [('blocks.json', b'{}'), ('README.md', b'# Block Game\nVisual block coding enabled!')],
-    # ===== GDEVELOP GAME EXAMPLES =====
-    'game_gdevelop_platformer': [
-        ('index.html', b'<!DOCTYPE html><html><head><title>GDevelop Platformer</title><style>*{margin:0;padding:0}body{background:#1a1a2e;display:flex;justify-content:center;align-items:center;min-height:100vh}canvas{border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.3)}</style></head><body><canvas id="game"></canvas><script src="game.js"></script></body></html>'),
-        ('game.js', b'''// GDevelop-like Platformer Game Template
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-
-// ===== SPRITES =====
-const sprites = {};
-
-// ===== GAME STATE =====
-let player = { x: 400, y: 300, width: 50, height: 50, color: "#22c55e", speed: 5 };
-let keys = {};
-let score = 0;
-
-// ===== INPUT HANDLING =====
-document.addEventListener("keydown", e => keys[e.code] = true);
-document.addEventListener("keyup", e => keys[e.code] = false);
-
-// ===== BLOCK-GENERATED CODE START =====
-// When game starts
-function onGameStart() {
-    // Add your startup code here
-}
-
-// Every frame
-function onUpdate() {
-    // Player movement (arrow keys)
-    if (keys["ArrowLeft"] || keys["KeyA"]) player.x -= player.speed;
-    if (keys["ArrowRight"] || keys["KeyD"]) player.x += player.speed;
-    if (keys["ArrowUp"] || keys["KeyW"]) player.y -= player.speed;
-    if (keys["ArrowDown"] || keys["KeyS"]) player.y += player.speed;
-    
-    // Keep player in bounds
-    player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
-    player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
-}
-
-// Draw everything
-function onDraw() {
-    // Draw player
-    ctx.fillStyle = player.color;
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-    
-    // Draw score
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 24px sans-serif";
-    ctx.fillText("Score: " + score, 20, 40);
-}
-// ===== BLOCK-GENERATED CODE END =====
-
-// ===== GAME LOOP =====
-onGameStart();
-
-function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    onUpdate();
-    onDraw();
-    requestAnimationFrame(gameLoop);
-}
-gameLoop();
-'''),
-        ('blocks.json', b'''{"blocks":[
-    {"id":"start","type":"event","label":"When Game Starts","code":"// Game started"},
-    {"id":"update","type":"event","label":"Every Frame","code":""},
-    {"id":"move_right","type":"motion","label":"Move Right","code":"player.x += player.speed;"},
-    {"id":"move_left","type":"motion","label":"Move Left","code":"player.x -= player.speed;"},
-    {"id":"move_up","type":"motion","label":"Move Up","code":"player.y -= player.speed;"},
-    {"id":"move_down","type":"motion","label":"Move Down","code":"player.y += player.speed;"},
-    {"id":"set_color","type":"looks","label":"Set Color","code":"player.color = \\"#COLOR\\";","inputs":["color"]},
-    {"id":"add_score","type":"control","label":"Add to Score","code":"score += VALUE;","inputs":["value"]}
-]}''')
-    ]
-}
-
-
-
 @app.route('/')
-def index(): return render_template('index.html')
-
-@app.route('/notebooks')
-def notebooks(): return render_template('notebooks.html')
-
-@app.route('/ai')
-def ai_builder():
-    api_key = os.environ.get('GOOGLE_AI_API_KEY', '')
-    recent = []
-    if current_user.is_authenticated:
-        projects = get_db().execute(
-            "SELECT name, created_at FROM projects WHERE user_id = ? ORDER BY created_at DESC LIMIT 6",
-            (current_user.id,)
-        ).fetchall()
-        for p in projects:
-            recent.append({
-                'name': p['name'],
-                'created': p['created_at'].split()[0] if p['created_at'] else 'Recently',
-                'type': 'project'
-            })
-    return render_template('ai.html', recent_projects=recent, last_prompt='')
+def index():
+    return render_template('index.html')
 
 @app.route('/pixel-editor')
-@login_required
 def pixel_editor():
     return render_template('pixel-editor.html')
 
-@app.route('/api/ai/generate', methods=['POST'])
-def ai_generate():
-    data = request.get_json()
-    prompt = data.get('prompt', '')
-    
-    if not prompt:
-        return jsonify({'error': 'No prompt provided'}), 400
-    
-    system_prompt = """You are an expert web developer. Generate complete, working HTML, CSS, and JavaScript code based on the user's request.
 
-Create a single HTML file with embedded CSS and JS that:
-1. Is fully functional and working
-2. Has modern, beautiful styling
-3. Uses clean, maintainable code
-4. Follows best practices
-
-Respond ONLY with valid JSON in this exact format:
-{"html": "complete HTML code", "css": "complete CSS code", "js": "complete JavaScript code"}
-
-Do NOT include any explanations or markdown. Just the JSON."""
-    
-    try:
-        client = openai.OpenAI(
-            api_key=os.environ.get('POE_API_KEY', ''),
-            base_url="https://api.poe.com/v1"
-        )
-        
-        chat = client.chat.completions.create(
-            model="kimi-k2.5",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=8000
-        )
-        
-        content = chat.choices[0].message.content
-        
-        # Parse JSON response
-        import re
-        json_match = re.search(r'\{[\s\S]*\}', content)
-        if json_match:
-            result = json.loads(json_match.group())
-        else:
-            result = json.loads(content)
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        print(f"AI Generation Error: {e}")
-        return jsonify({'error': str(e)}), 500
+TEMPLATES = {
+    'blank': [
+        ('index.html', b'<!DOCTYPE html>\n<html>\n<head>\n    <title>My Site</title>\n    <link rel="stylesheet" href="style.css">\n</head>\n<body>\n    <h1>Hello World</h1>\n    <p>Start building!</p>\n    <script src="script.js"></script>\n</body>\n</html>'),
+        ('style.css', b'body { font-family: system-ui; max-width: 800px; margin: 0 auto; padding: 20px; }'),
+        ('script.js', b'console.log("Hello!");')
+    ],
+    'portfolio': [
+        ('index.html', b'<!DOCTYPE html>\n<html>\n<head>\n    <title>My Portfolio</title>\n    <link rel="stylesheet" href="style.css">\n</head>\n<body>\n    <nav>\n        <div class="logo">Portfolio</div>\n        <div class="links">\n            <a href="#about">About</a>\n            <a href="#projects">Projects</a>\n            <a href="#contact">Contact</a>\n        </div>\n    </nav>\n    <header>\n        <h1>Hi, I am a Developer</h1>\n        <p>I build amazing web experiences</p>\n    </header>\n    <section id="about">\n        <h2>About Me</h2>\n        <p>I am a passionate developer.</p>\n    </section>\n    <section id="projects">\n        <h2>My Projects</h2>\n        <div class="project-grid">\n            <div class="project"><h3>Project 1</h3><p>A cool project</p></div>\n            <div class="project"><h3>Project 2</h3><p>Another project</p></div>\n        </div>\n    </section>\n    <section id="contact">\n        <h2>Contact</h2>\n        <form>\n            <input placeholder="Name">\n            <input placeholder="Email">\n            <textarea placeholder="Message"></textarea>\n            <button>Send</button>\n        </form>\n    </section>\n    <footer><p>2026 My Portfolio</p></footer>\n</body>\n</html>'),
+        ('style.css', b'* { margin: 0; padding: 0; box-sizing: border-box; } body { font-family: system-ui; line-height: 1.6; color: #333; } nav { display: flex; justify-content: space-between; padding: 1rem 5%; background: #fff; position: fixed; width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); } .logo { font-size: 1.5rem; font-weight: bold; color: #2563eb; } .links a { margin-left: 2rem; color: #333; text-decoration: none; } header { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; text-align: center; } header h1 { font-size: 4rem; } section { padding: 5rem 10%; } section h2 { font-size: 2.5rem; margin-bottom: 2rem; } .project-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; } .project { background: #fff; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1); } form { max-width: 500px; margin: 0 auto; } input, textarea { width: 100%; padding: 1rem; margin-bottom: 1rem; border: 1px solid #ddd; border-radius: 0.5rem; } button { background: #2563eb; color: #fff; padding: 1rem 2rem; border: none; border-radius: 0.5rem; cursor: pointer; } footer { background: #1e293b; color: #fff; text-align: center; padding: 2rem; }')
+    ],
+    'blog': [
+        ('index.html', b'<!DOCTYPE html>\n<html>\n<head>\n    <title>My Blog</title>\n    <link rel="stylesheet" href="style.css">\n</head>\n<body>\n    <header>\n        <h1>My Blog</h1>\n        <p>Thoughts on development</p>\n    </header>\n    <main>\n        <article>\n            <h2>Getting Started with Web Development</h2>\n            <p class="meta">January 15, 2026</p>\n            <p>Web development is an exciting journey...</p>\n        </article>\n        <article>\n            <h2>The Power of JavaScript</h2>\n            <p class="meta">January 10, 2026</p>\n            <p>JavaScript is incredibly versatile...</p>\n        </article>\n    </main>\n    <aside>\n        <h3>About</h3>\n        <p>Welcome to my blog!</p>\n    </aside>\n    <footer><p>2026 My Blog</p></footer>\n</body>\n</html>'),
+        ('style.css', b'* { margin: 0; padding: 0; box-sizing: border-box; } body { font-family: system-ui; max-width: 900px; margin: 0 auto; padding: 0 20px; } header { text-align: center; padding: 4rem 0; border-bottom: 1px solid #eee; } header h1 { font-size: 3rem; } main { margin-top: 3rem; } article { margin-bottom: 3rem; padding-bottom: 2rem; border-bottom: 1px solid #eee; } article h2 { font-size: 1.8rem; color: #1e293b; } .meta { color: #94a3b8; font-size: 0.9rem; } aside { background: #f8fafc; padding: 2rem; border-radius: 1rem; margin-top: 3rem; } footer { text-align: center; padding: 3rem; color: #94a3b8; }')
+    ],
+    'voxel-game': [
+        ('index.html', b'<!DOCTYPE html>\n<html>\n<head>\n    <title>Voxel World</title>\n    <script src="https://cdn.babylonjs.com/babylon.js"></script>\n    <style>\n        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1a1a2e; }\n        canvas { width: 100%; height: 100%; touch-action: none; }\n        #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); pointer-events: none; color: white; font-size: 24px; font-family: monospace; text-shadow: 1px 1px 2px #000; }\n        #hud { position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; font-size: 14px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px; }\n    </style>\n</head>\n<body>\n    <div id="crosshair">+</div>\n    <div id="hud">WASD: Move | SPACE: Jump | Left Click: Place | Right Click: Break | R: Reset</div>\n    <canvas id="renderCanvas"></canvas>\n    <script>\n        const canvas = document.getElementById("renderCanvas");\n        const engine = new BABYLON.Engine(canvas, true, { antialias: true });\n\n        const createScene = function() {\n            const scene = new BABYLON.Scene(engine);\n            scene.clearColor = new BABYLON.Color3(0.1, 0.1, 0.18);\n            scene.gravity = new BABYLON.Vector3(0, -0.5, 0);\n            scene.collisionsEnabled = true;\n\n            const camera = new BABYLON.UniversalCamera("player", new BABYLON.Vector3(0, 10, 0), scene);\n            camera.attachControl(canvas, true);\n            camera.speed = 0.5;\n            camera.inertia = 0.1;\n            camera.checkCollisions = true;\n            camera.applyGravity = false;\n            camera.ellipsoid = new BABYLON.Vector3(0.4, 0.8, 0.4);\n            camera.keysUp.push(87); camera.keysDown.push(83); camera.keysLeft.push(65); camera.keysRight.push(68);\n\n            let verticalVelocity = 0;\n            const gravity = 0.015;\n            const jumpForce = 0.35;\n            let isGrounded = false;\n            const playerHeight = 1.6;\n\n            const inputMap = {};\n            scene.actionManager = new BABYLON.ActionManager(scene);\n            scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyDownTrigger, (evt) => inputMap[evt.sourceEvent.key.toLowerCase()] = true));\n            scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyUpTrigger, (evt) => inputMap[evt.sourceEvent.key.toLowerCase()] = false));\n\n            const matNeon = new BABYLON.StandardMaterial("neon", scene);\n            matNeon.diffuseColor = new BABYLON.Color3(0, 1, 0.8);\n            matNeon.emissiveColor = new BABYLON.Color3(0, 0.5, 0.4);\n            matNeon.specularColor = BABYLON.Color3.Black();\n\n            const matPink = new BABYLON.StandardMaterial("pink", scene);\n            matPink.diffuseColor = new BABYLON.Color3(1, 0.2, 0.6);\n            matPink.emissiveColor = new BABYLON.Color3(0.5, 0.1, 0.3);\n            matPink.specularColor = BABYLON.Color3.Black();\n\n            const matPurple = new BABYLON.StandardMaterial("purple", scene);\n            matPurple.diffuseColor = new BABYLON.Color3(0.6, 0.2, 1);\n            matPurple.emissiveColor = new BABYLON.Color3(0.3, 0.1, 0.5);\n            matPurple.specularColor = BABYLON.Color3.Black();\n\n            const matOrange = new BABYLON.StandardMaterial("orange", scene);\n            matOrange.diffuseColor = new BABYLON.Color3(1, 0.5, 0);\n            matOrange.emissiveColor = new BABYLON.Color3(0.5, 0.25, 0);\n            matOrange.specularColor = BABYLON.Color3.Black();\n\n            const materials = [matNeon, matPink, matPurple, matOrange];\n            let selectedMat = 0;\n\n            const masterBox = BABYLON.MeshBuilder.CreateBox("box", {size: 1}, scene);\n            masterBox.isVisible = false;\n\n            const worldBlocks = new Map();\n            let blockId = 0;\n\n            function createBlock(x, y, z, mat) {\n                const key = x + "," + y + "," + z;\n                if (worldBlocks.has(key)) return;\n                const b = masterBox.clone("block" + blockId++);\n                b.position.set(x, y, z);\n                b.isVisible = true;\n                b.material = mat;\n                b.checkCollisions = true;\n                b.isBlock = true;\n                worldBlocks.set(key, b);\n            }\n\n            const SIZE = 12;\n            const GROUND = 5;\n            for (let x = -SIZE; x < SIZE; x++) {\n                for (let z = -SIZE; z < SIZE; z++) {\n                    createBlock(x, GROUND, z, matNeon);\n                    if (Math.random() > 0.7) createBlock(x, GROUND + 1, z, matPink);\n                }\n            }\n\n            const selectionBox = BABYLON.MeshBuilder.CreateBox("sel", {size: 1.01}, scene);\n            const matWire = new BABYLON.StandardMaterial("wire", scene);\n            matWire.wireframe = true;\n            matWire.emissiveColor = BABYLON.Color3.White();\n            selectionBox.material = matWire;\n            selectionBox.isPickable = false;\n            selectionBox.isVisible = false;\n\n            scene.registerBeforeRender(() => {\n                const ray = new BABYLON.Ray(camera.position, new BABYLON.Vector3(0, -1, 0), playerHeight + 0.1);\n                const pick = scene.pickWithRay(ray, (mesh) => mesh.isBlock);\n                if (pick.hit) { isGrounded = true; verticalVelocity = 0; if (camera.position.y < pick.pickedPoint.y + playerHeight) camera.position.y = pick.pickedPoint.y + playerHeight; }\n                else { isGrounded = false; verticalVelocity -= gravity; }\n                if (inputMap[" "] && isGrounded) { verticalVelocity = jumpForce; isGrounded = false; }\n                camera.position.y += verticalVelocity;\n                if (camera.position.y < -10) { camera.position.set(0, 10, 0); verticalVelocity = 0; }\n\n                const ray2 = camera.getForwardRay(5);\n                const hit = scene.pickWithRay(ray2, (m) => m.isBlock);\n                selectionBox.isVisible = hit.hit;\n                if (hit.hit) selectionBox.position = hit.pickedMesh.position;\n            });\n\n            scene.onPointerDown = (evt) => {\n                if (!document.pointerLockElement) { canvas.requestPointerLock(); return; }\n                const ray = camera.getForwardRay(5);\n                const hit = scene.pickWithRay(ray, (m) => m.isBlock);\n                if (hit.hit) {\n                    const mesh = hit.pickedMesh;\n                    if (evt.button === 2) {\n                        const key = mesh.position.x + "," + mesh.position.y + "," + mesh.position.z;\n                        worldBlocks.delete(key);\n                        mesh.dispose();\n                    } else if (evt.button === 0) {\n                        const normal = hit.getNormal(true);\n                        const pos = mesh.position.add(normal);\n                        if (BABYLON.Vector3.Distance(pos, camera.position) < 1.5) return;\n                        createBlock(Math.round(pos.x), Math.round(pos.y), Math.round(pos.z), materials[selectedMat]);\n                    }\n                }\n            };\n\n            window.addEventListener("keydown", (e) => {\n                if (e.key === "r" || e.key === "R") { camera.position.set(0, 10, 0); verticalVelocity = 0; }\n                if (e.key >= "1" && e.key <= "4") { selectedMat = parseInt(e.key) - 1; }\n            });\n\n            new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene).intensity = 0.8;\n            new BABYLON.PointLight("pl", new BABYLON.Vector3(0, 10, 0), scene).intensity = 0.5;\n\n            return scene;\n        };\n\n        const scene = createScene();\n        engine.runRenderLoop(() => { scene.render(); });\n        window.addEventListener("resize", () => { engine.resize(); });\n    </script>\n</body>\n</html>')
+    ],
+}
 
 @app.route('/explore')
 def explore():
@@ -627,7 +241,11 @@ def register():
             user = db.execute('SELECT * FROM users WHERE username = ?', (request.form['username'],)).fetchone()
             login_user(User(user['id'], user['username'], user['storage_used']))
             return redirect(url_for('dashboard'))
-        except sqlite3.IntegrityError: flash('Username taken', 'error')
+        except Exception as e:
+            if 'UNIQUE' in str(e) or 'unique' in str(e):
+                flash('Username taken', 'error')
+            else:
+                flash(f'Error: {str(e)}', 'error')
     return render_template('register.html')
 
 @app.route('/logout')
@@ -1490,6 +1108,55 @@ def delete_project(pid):
     db.commit()
     return jsonify({'success': True})
 
+
+@app.route('/api/project/<int:pid>/image', methods=['POST', 'GET'])
+def project_image(pid):
+    db = get_db()
+    # GET: serve image stored in files table under filepath 'cover'
+    if request.method == 'GET':
+        f = db.execute('SELECT content FROM files WHERE project_id = ? AND filepath = ?', (pid, 'cover')).fetchone()
+        if not f:
+            return "", 404
+        data = f['content']
+        kind = imghdr.what(None, h=data)
+        if not kind: mimetype = 'application/octet-stream'
+        else:
+            if kind == 'jpeg': mimetype = 'image/jpeg'
+            else: mimetype = f'image/{kind}'
+        return Response(data, mimetype=mimetype)
+
+    # POST: upload/replace image (must be owner)
+    if not current_user or not current_user.is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
+    project = db.execute('SELECT id, user_id FROM projects WHERE id = ?', (pid,)).fetchone()
+    if not project or project['user_id'] != current_user.id:
+        return jsonify({'error': 'Not found'}), 404
+
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image uploaded'}), 400
+    f = request.files['image']
+    data = f.read()
+    if not data:
+        return jsonify({'error': 'Empty file'}), 400
+
+    # store or replace cover
+    try:
+        # Ensure the projects table has an image_url column (runtime migration)
+        cols = [r['name'] for r in db.execute("PRAGMA table_info(projects)").fetchall()]
+        if 'image_url' not in cols:
+            db.execute('ALTER TABLE projects ADD COLUMN image_url TEXT')
+            db.commit()
+
+        db.execute('INSERT OR REPLACE INTO files (project_id, filepath, content, is_asset) VALUES (?, ?, ?, ?)',
+                   (pid, 'cover', data, 1))
+        # set projects.image_url to the GET endpoint so templates can reference it
+        image_url = f'/api/project/{pid}/image'
+        db.execute('UPDATE projects SET image_url = ? WHERE id = ?', (image_url, pid))
+        db.commit()
+        return jsonify({'success': True, 'image_url': image_url})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # --- SERVERLESS ---
 @app.route('/api/run-function/<project_uid>', methods=['POST'])
 def run_fn(project_uid):
@@ -1536,6 +1203,95 @@ def view_file(uid, path):
         c = c.decode('utf-8').replace('<head>', f'<head><script>const PROJECT_UID="{uid}";</script>')
         return Response(c, mimetype='text/html')
     return Response(c, mimetype=mimetypes.guess_type(path)[0])
+
+
+@app.route('/project_public/<project_uid>')
+def project_public(project_uid):
+    db = get_db()
+    p = db.execute('SELECT p.*, u.username as username FROM projects p JOIN users u ON p.user_id = u.id WHERE p.project_uid = ?', (project_uid,)).fetchone()
+    if not p: return "404", 404
+    files = db.execute('SELECT filepath, content, is_asset FROM files WHERE project_id = ? ORDER BY filepath', (p['id'],)).fetchall()
+    code_files = []
+    for f in files:
+        if f['is_asset']: continue
+        try:
+            content = f['content'].decode('utf-8')
+        except:
+            content = '[binary file]'
+        code_files.append({'path': f['filepath'], 'content': content})
+    return render_template('project_public.html', project=p, code_files=code_files, is_liked=False)
+
+
+@app.route('/project_public/<project_uid>/file/<path:filepath>')
+def view_shared_file(project_uid, filepath):
+    f = get_db().execute('SELECT f.content FROM files f JOIN projects p ON f.project_id = p.id WHERE p.project_uid = ? AND f.filepath = ?', (project_uid, filepath)).fetchone()
+    if not f: return "404", 404
+    data = f['content']
+    if filepath.endswith('.html'):
+        return Response(data.decode('utf-8'), mimetype='text/html')
+    # handle bytes vs text
+    if isinstance(data, bytes):
+        return Response(data, mimetype=mimetypes.guess_type(filepath)[0] or 'application/octet-stream')
+    return Response(data, mimetype=mimetypes.guess_type(filepath)[0] or 'text/plain')
+
+
+@app.route('/project/<project_uid>/like', methods=['POST'])
+def project_like(project_uid):
+    if not current_user or not current_user.is_authenticated:
+        return jsonify({'error': 'Auth required'}), 401
+    db = get_db()
+    proj = db.execute('SELECT id, likes_count FROM projects WHERE project_uid = ?', (project_uid,)).fetchone()
+    if not proj: return jsonify({'error': 'Not found'}), 404
+    user_id = int(current_user.id)
+    existing = db.execute('SELECT 1 FROM likes WHERE user_id = ? AND project_id = ?', (user_id, proj['id'])).fetchone()
+    if existing:
+        db.execute('DELETE FROM likes WHERE user_id = ? AND project_id = ?', (user_id, proj['id']))
+        db.execute('UPDATE projects SET likes_count = likes_count - 1 WHERE id = ?', (proj['id'],))
+        db.commit()
+        new_count = db.execute('SELECT likes_count FROM projects WHERE id = ?', (proj['id'],)).fetchone()['likes_count']
+        return jsonify({'success': True, 'liked': False, 'new_count': new_count})
+    else:
+        db.execute('INSERT INTO likes (user_id, project_id) VALUES (?, ?)', (user_id, proj['id']))
+        db.execute('UPDATE projects SET likes_count = likes_count + 1 WHERE id = ?', (proj['id'],))
+        db.commit()
+        new_count = db.execute('SELECT likes_count FROM projects WHERE id = ?', (proj['id'],)).fetchone()['likes_count']
+        return jsonify({'success': True, 'liked': True, 'new_count': new_count})
+
+
+@app.route('/project/<project_uid>/remix', methods=['POST'])
+def project_remix(project_uid):
+    if not current_user or not current_user.is_authenticated:
+        return jsonify({'error': 'Auth required'}), 401
+    db = get_db()
+    src = db.execute('SELECT * FROM projects WHERE project_uid = ?', (project_uid,)).fetchone()
+    if not src: return jsonify({'error': 'Not found'}), 404
+    # create new project copy for current user
+    new_uid = secrets.token_urlsafe(8)
+    name = (src['name'] or 'Untitled') + ' (Remix)'
+    desc = src['description'] if 'description' in src.keys() else ''
+    cur = db.execute('INSERT INTO projects (user_id, name, project_uid, description) VALUES (?, ?, ?, ?)',
+                     (current_user.id, name, new_uid, desc))
+    new_id = cur.lastrowid
+    files = db.execute('SELECT filepath, content, is_asset FROM files WHERE project_id = ?', (src['id'],)).fetchall()
+    for f in files:
+        db.execute('INSERT INTO files (project_id, filepath, content, is_asset) VALUES (?, ?, ?, ?)',
+                   (new_id, f['filepath'], f['content'], f['is_asset']))
+    db.commit()
+    return jsonify({'success': True, 'new_project_id': new_id})
+
+
+@app.route('/api/project/<int:pid>/description', methods=['POST'])
+@login_required
+def update_project_description(pid):
+    db = get_db()
+    proj = db.execute('SELECT id, user_id FROM projects WHERE id = ?', (pid,)).fetchone()
+    if not proj or proj['user_id'] != current_user.id:
+        return jsonify({'error': 'Not found'}), 404
+    data = request.get_json() or {}
+    desc = data.get('description', '')
+    db.execute('UPDATE projects SET description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (desc, pid))
+    db.commit()
+    return jsonify({'success': True})
 
 if __name__ == '__main__':
     if not os.path.exists(DATABASE): init_db()
