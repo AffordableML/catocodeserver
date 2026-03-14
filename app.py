@@ -143,7 +143,7 @@ def init_db():
             schema = schema.replace('AUTOINCREMENT', '')
             # Execute each statement separately
             statements = schema.split(';')
-            cursor = db.cursor()
+            cursor = db.cursor
             for stmt in statements:
                 stmt = stmt.strip()
                 if stmt and not stmt.startswith('--'):
@@ -153,8 +153,13 @@ def init_db():
                         print(f"Error executing: {stmt[:50]}... - {e}")
             db.commit()
         else:
-            with app.open_resource('schema.sql', mode='r') as f: db.cursor().executescript(f.read())
-            db.commit()
+            # SQLite: use raw connection for executescript
+            import sqlite3
+            raw_conn = sqlite3.connect(DATABASE)
+            with app.open_resource('schema.sql', mode='r') as f:
+                raw_conn.executescript(f.read())
+            raw_conn.commit()
+            raw_conn.close()
 
 def ensure_gamedev_tables():
     db = get_db()
