@@ -111,3 +111,12 @@ CREATE TABLE gamedev_plugins (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
+
+DROP TABLE IF EXISTS animations;
+CREATE TABLE animations (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER,
+    animation_data TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+);

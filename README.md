@@ -14,7 +14,6 @@
   <a href="#-features">Features</a> •
   <a href="#-tech-stack">Tech Stack</a> •
   <a href="#-getting-started">Getting Started</a> •
-  <a href="#-game-builder">Game Builder</a>
 </p>
 
 ---
@@ -23,11 +22,10 @@
 
 CatoCode is a comprehensive web-based development environment designed for creators, developers, and data scientists.
 
-*   🎮 **Platformer Builder**: An intuitive, block-based level editor for creating 2D platformers.
-*   📓 **Interactive Notebooks**: Run Python code in your browser with full support for NumPy, Pandas, and Matplotlib.
 *   📁 **Project Management**: Organize your code projects and games in a centralized dashboard.
 *   🌍 **One-Click Publishing**: Share your creations with the world instantly.
-*   🛠️ **Custom Tile & Sound Engine**: Design your own pixel art tiles and integrate custom sound effects.
+*   🛠️ **Custom Tile & Sound Engine**: Design your own pixel art tiles.
+*   🎨 **Pixel Editor**: Draw animations and share them with links for others to remix.
 
 ## 🚀 Tech Stack
 
@@ -75,16 +73,14 @@ CatoCode is a comprehensive web-based development environment designed for creat
 
 Open your browser and navigate to `http://localhost:5000` to start building!
 
-## 🕹 Platformer Builder
+### Demo Account
 
-The core of CatoCode is its powerful platformer builder.
+A demo account has been pre-created:
 
-- **Viewport Control**: Control the camera FOV (blocks wide) for a custom look.
-- **Physics Customization**: Fine-tune player speed, jump power, and gravity.
-- **Level Management**: Add, delete, and switch between multiple levels effortlessly.
-- **Custom Assets**: Draw your own terrain and characters directly in the browser.
+- **Username**: `meep`
+- **Password**: `meep`
 
----
+You can also register a new account through the registration page.
 
 <p align="center">
   Built with ❤️ by <a href="https://github.com/AffordableML">AffordableML</a>

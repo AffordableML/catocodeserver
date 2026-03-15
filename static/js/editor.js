@@ -487,6 +487,33 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Saved');
     };
 
+    // --- EXPORT ZIP ---
+    document.getElementById('export-zip-btn').onclick = async () => {
+        // First save any changes
+        if (activeFile && !activeFile.is_asset) activeFile.content = editor.getValue();
+
+        function toBase64(input) {
+            if (typeof input === 'string') return btoa(unescape(encodeURIComponent(input)));
+            const bin = []; const bytes = new Uint8Array(input);
+            for (let i = 0; i < bytes.byteLength; i++) bin.push(String.fromCharCode(bytes[i]));
+            return btoa(bin.join(''));
+        }
+
+        const payload = files.map(f => ({
+            path: f.path, is_asset: f.is_asset,
+            content_b64: toBase64(f.content)
+        }));
+
+        // Save first
+        await fetch(`/api/project/${PROJECT_DATA.id}/save`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ files: payload })
+        });
+
+        // Then download zip
+        window.location.href = `/api/project/${PROJECT_DATA.id}/export-zip`;
+    };
+
     // --- LOAD ---
     (async () => {
         if (PROJECT_DATA.id) {

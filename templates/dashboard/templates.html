@@ -20,41 +20,41 @@
             Template</button>
     </div>
 
-    <!-- Voxel Game -->
+    <!-- Phaser Blank -->
+    <div class="bg-white border rounded-xl p-6 hover:shadow-lg transition group relative">
+        <div
+            class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 text-xl mb-4 group-hover:bg-blue-600 group-hover:text-white transition">
+            <i class="fas fa-gamepad"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Phaser Blank</h3>
+        <p class="text-slate-500 mb-6 text-sm">Blank PhaserJS game template to build from scratch.</p>
+        <button onclick="create('phaser-blank')"
+            class="w-full py-2 bg-blue-100 text-blue-600 font-bold rounded-lg hover:bg-blue-600 hover:text-white transition">Use
+            Template</button>
+    </div>
+
+    <!-- Phaser Clicker -->
     <div class="bg-white border rounded-xl p-6 hover:shadow-lg transition group relative">
         <div
             class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-green-600 text-xl mb-4 group-hover:bg-green-600 group-hover:text-white transition">
-            <i class="fas fa-cube"></i>
+            <i class="fas fa-mouse-pointer"></i>
         </div>
-        <h3 class="text-xl font-bold mb-2">Voxel Game (3D)</h3>
-        <p class="text-slate-500 mb-6 text-sm">Build a Minecraft-style voxel world. Place and break blocks!</p>
-        <button onclick="create('voxel')"
+        <h3 class="text-xl font-bold mb-2">Clicker Game</h3>
+        <p class="text-slate-500 mb-6 text-sm">Build an incremental clicker game with PhaserJS.</p>
+        <button onclick="create('phaser-clicker')"
             class="w-full py-2 bg-green-100 text-green-600 font-bold rounded-lg hover:bg-green-600 hover:text-white transition">Use
             Template</button>
     </div>
 
-    <!-- 3D Shooter -->
-    <div class="bg-white border rounded-xl p-6 hover:shadow-lg transition group relative">
-        <div
-            class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center text-red-600 text-xl mb-4 group-hover:bg-red-600 group-hover:text-white transition">
-            <i class="fas fa-crosshairs"></i>
-        </div>
-        <h3 class="text-xl font-bold mb-2">3D Shooter</h3>
-        <p class="text-slate-500 mb-6 text-sm">First-person shooter with enemies, shooting, and scoring.</p>
-        <button onclick="create('shooter3d')"
-            class="w-full py-2 bg-red-100 text-red-600 font-bold rounded-lg hover:bg-red-600 hover:text-white transition">Use
-            Template</button>
-    </div>
-
-    <!-- Roguelike -->
+    <!-- Phaser Roguelike -->
     <div class="bg-white border rounded-xl p-6 hover:shadow-lg transition group relative">
         <div
             class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600 text-xl mb-4 group-hover:bg-purple-600 group-hover:text-white transition">
             <i class="fas fa-dungeon"></i>
         </div>
-        <h3 class="text-xl font-bold mb-2">Roguelike</h3>
-        <p class="text-slate-500 mb-6 text-sm">Dungeon crawler with procedural generation.</p>
-        <button onclick="create('roguelike')"
+        <h3 class="text-xl font-bold mb-2">Roguelike Game</h3>
+        <p class="text-slate-500 mb-6 text-sm">Top-down roguelike with player movement and enemies.</p>
+        <button onclick="create('phaser-roguelike')"
             class="w-full py-2 bg-purple-100 text-purple-600 font-bold rounded-lg hover:bg-purple-600 hover:text-white transition">Use
             Template</button>
     </div>
@@ -90,9 +90,9 @@
     async function create(tid) {
         const templateNames = {
             'blank': 'Site',
-            'voxel': 'Voxel Game',
-            'shooter3d': '3D Shooter',
-            'roguelike': 'Roguelike',
+            'phaser-blank': 'Phaser Game',
+            'phaser-clicker': 'Clicker Game',
+            'phaser-roguelike': 'Roguelike Game',
             'portfolio': 'Portfolio',
             'blog': 'Blog'
         };
