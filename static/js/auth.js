@@ -68,24 +68,3 @@ async function checkAuthState() {
     
     return null;
 }
-
-// Listen for auth changes
-supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN') {
-        console.log('User signed in');
-    } else if (event === 'SIGNED_OUT') {
-        console.log('User signed out');
-        // Only redirect if not already on homepage or auth pages
-        const currentPage = window.location.pathname;
-        if (!currentPage.includes('index.html') && 
-            !currentPage.includes('login.html') && 
-            !currentPage.includes('register.html') &&
-            !currentPage.includes('editor.html') &&
-            !currentPage.includes('view.html') &&
-            !currentPage.includes('gallery.html') &&
-            !currentPage.includes('profile.html') &&
-            currentPage !== '/') {
-            window.location.href = '/';
-        }
-    }
-});
