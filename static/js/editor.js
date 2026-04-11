@@ -16,13 +16,10 @@ let fps = 10;
 let currentTool = 'pen';
 let currentColor = '#000000';
 let isDrawing = false;
-let onionSkinEnabled = false;
 
 // Canvas elements
 const canvas = document.getElementById('pixel-canvas');
 const ctx = canvas.getContext('2d');
-const onionCanvas = document.getElementById('onion-canvas');
-const onionCtx = onionCanvas.getContext('2d');
 
 // Import state
 let importedImage = null;
@@ -53,8 +50,6 @@ function createEmptyFrame() {
 function setupCanvas() {
     canvas.width = canvasWidth * pixelSize;
     canvas.height = canvasHeight * pixelSize;
-    onionCanvas.width = canvasWidth * pixelSize;
-    onionCanvas.height = canvasHeight * pixelSize;
 }
 
 function setupColorPalette() {
@@ -83,12 +78,6 @@ function setupEventListeners() {
     canvas.addEventListener('touchstart', handleTouch);
     canvas.addEventListener('touchmove', handleTouch);
     canvas.addEventListener('touchend', stopDrawing);
-    
-    // Onion skin toggle
-    document.getElementById('onion-skin-toggle').addEventListener('change', (e) => {
-        onionSkinEnabled = e.target.checked;
-        drawOnionSkin();
-    });
     
     // FPS input
     document.getElementById('fps-input').addEventListener('change', (e) => {
@@ -227,29 +216,6 @@ function drawCurrentFrame() {
         ctx.lineTo(canvas.width, y * pixelSize);
         ctx.stroke();
     }
-    
-    drawOnionSkin();
-}
-
-function drawOnionSkin() {
-    onionCtx.clearRect(0, 0, onionCanvas.width, onionCanvas.height);
-    
-    if (!onionSkinEnabled || currentFrameIndex === 0 || frames.length < 2) return;
-    
-    const previousFrame = frames[currentFrameIndex - 1];
-    
-    for (let y = 0; y < canvasHeight; y++) {
-        for (let x = 0; x < canvasWidth; x++) {
-            const index = y * canvasWidth + x;
-            const color = previousFrame[index];
-            
-            // Only draw non-white pixels
-            if (color !== '#FFFFFF' && color !== '#ffffff') {
-                onionCtx.fillStyle = color;
-                onionCtx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
-            }
-        }
-    }
 }
 
 function setTool(tool) {
@@ -351,6 +317,19 @@ function selectFrame(index) {
 function addFrame() {
     frames.push(createEmptyFrame());
     currentFrameIndex = frames.length - 1;
+    updateTimeline();
+    drawCurrentFrame();
+}
+
+function duplicateFrame() {
+    // Create a copy of the current frame
+    const currentFrame = frames[currentFrameIndex];
+    const duplicatedFrame = [...currentFrame];
+    
+    // Insert after current frame
+    frames.splice(currentFrameIndex + 1, 0, duplicatedFrame);
+    currentFrameIndex = currentFrameIndex + 1;
+    
     updateTimeline();
     drawCurrentFrame();
 }
@@ -576,16 +555,10 @@ function exportGIF() {
         return;
     }
     
-    const delay = 1000 / fps; // Use current FPS setting
+    const interval = 1 / fps; // Convert FPS to seconds per frame
     
-    const gif = new GIF({
-        workers: 2,
-        quality: 10,
-        width: canvasWidth,
-        height: canvasHeight
-    });
-    
-    frames.forEach(frame => {
+    // Create image array for gifshot
+    const images = frames.map(frame => {
         const frameCanvas = document.createElement('canvas');
         frameCanvas.width = canvasWidth;
         frameCanvas.height = canvasHeight;
@@ -599,17 +572,28 @@ function exportGIF() {
             }
         }
         
-        gif.addFrame(frameCanvas, { delay: delay });
+        return frameCanvas.toDataURL('image/png');
     });
     
-    gif.on('finished', (blob) => {
-        const link = document.createElement('a');
-        link.download = 'animation.gif';
-        link.href = URL.createObjectURL(blob);
-        link.click();
+    // Create GIF using gifshot
+    gifshot.createGIF({
+        images: images,
+        gifWidth: canvasWidth,
+        gifHeight: canvasHeight,
+        interval: interval,
+        numFrames: frames.length,
+        frameDuration: 1,
+        sampleInterval: 1
+    }, function(obj) {
+        if (!obj.error) {
+            const link = document.createElement('a');
+            link.download = 'animation.gif';
+            link.href = obj.image;
+            link.click();
+        } else {
+            alert('Error creating GIF: ' + obj.error);
+        }
     });
-    
-    gif.render();
 }
 
 // Initialize
