@@ -111,8 +111,8 @@ Now we'll add your Supabase credentials to the project.
 3. Open it in any text editor
 4. You'll see:
    ```javascript
-   const SUPABASE_URL = 'https://bpjukhopjkbdfeuhzdvv.supabase.co';
-   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...YOUR_ANON_KEY_HERE';
+   const SUPABASE_URL = 'https://url.supabase.co';
+   const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';
    ```
 5. Replace the URL with your project URL from Step 2
 6. Replace the entire ANON_KEY with the key you copied in Step 4
