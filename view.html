@@ -27,7 +27,9 @@
             
             <div class="flex items-center gap-4">
                 <a href="gallery.html" class="font-bold text-slate-600 hover:text-black">Gallery</a>
-                <div id="auth-nav"></div>
+                <a href="editor.html" class="bg-[#20ffad] text-black px-6 py-2 font-black rounded-lg border-2 border-black neo-btn">
+                    <i class="fas fa-plus mr-2"></i>New Art
+                </a>
             </div>
         </div>
     </nav>
@@ -45,9 +47,6 @@
                 
                 <!-- Actions -->
                 <div class="flex gap-4">
-                    <button id="like-btn" class="flex-1 bg-red-500 text-white px-6 py-3 font-black rounded-xl border-2 border-black neo-btn">
-                        <i class="fas fa-heart mr-2"></i><span id="like-text">Like</span> (<span id="like-count">0</span>)
-                    </button>
                     <button id="remix-btn" class="flex-1 bg-[#4f46e5] text-white px-6 py-3 font-black rounded-xl border-2 border-black neo-btn">
                         <i class="fas fa-copy mr-2"></i>Remix
                     </button>
@@ -61,7 +60,7 @@
                 <div class="flex items-center gap-4 mb-6">
                     <div class="flex items-center gap-2">
                         <i class="fas fa-user text-slate-600"></i>
-                        <a id="artwork-author" href="#" class="font-bold text-slate-600 hover:text-black hover:underline">Anonymous</a>
+                        <span class="font-bold text-slate-600">Anonymous</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <i class="fas fa-calendar text-slate-600"></i>
@@ -75,14 +74,6 @@
                         <div class="flex justify-between">
                             <span>Dimensions:</span>
                             <span id="artwork-dimensions">-</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Likes:</span>
-                            <span id="artwork-likes">0</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Remixes:</span>
-                            <span id="artwork-remixes">0</span>
                         </div>
                     </div>
                 </div>
@@ -113,28 +104,8 @@
 </div>
 
 <script src="static/js/config.js"></script>
-<script src="static/js/auth.js"></script>
 <script>
-let currentUser = null;
 let artwork = null;
-let isLiked = false;
-
-async function setupNav() {
-    currentUser = await getCurrentUser();
-    const authNav = document.getElementById('auth-nav');
-    
-    if (currentUser) {
-        authNav.innerHTML = `
-            <a href="dashboard.html" class="bg-[#20ffad] text-black px-6 py-2 font-black rounded-lg border-2 border-black neo-btn">
-                Dashboard
-            </a>
-        `;
-    } else {
-        authNav.innerHTML = `
-            <a href="login.html" class="font-bold text-slate-600 hover:text-black">Login</a>
-        `;
-    }
-}
 
 async function loadArtwork() {
     try {
@@ -149,10 +120,7 @@ async function loadArtwork() {
         // Get artwork
         const { data, error } = await supabase
             .from('artworks')
-            .select(`
-                *,
-                users (username)
-            `)
+            .select('*')
             .eq('id', artworkId)
             .single();
         
@@ -161,18 +129,6 @@ async function loadArtwork() {
         
         // Display artwork
         document.getElementById('artwork-title').textContent = artwork.title;
-        
-        const authorLink = document.getElementById('artwork-author');
-        if (artwork.user_id && artwork.users?.username) {
-            authorLink.textContent = artwork.users.username;
-            authorLink.href = `profile.html?id=${artwork.user_id}`;
-        } else {
-            authorLink.textContent = 'Anonymous';
-            authorLink.href = '#';
-            authorLink.classList.remove('hover:text-black', 'hover:underline');
-            authorLink.style.cursor = 'default';
-        }
-        
         document.getElementById('artwork-dimensions').textContent = `${artwork.width}x${artwork.height}`;
         
         // Format date
@@ -197,58 +153,11 @@ async function loadArtwork() {
             ctx.putImageData(imageData, 0, 0);
         }
         
-        // Load stats
-        await loadStats();
-        
-        // Check if user is owner
-        if (currentUser && currentUser.id === artwork.user_id) {
-            document.getElementById('owner-actions').classList.remove('hidden');
-            document.getElementById('edit-btn').href = `editor.html?id=${artwork.id}`;
-            document.getElementById('public-text').textContent = artwork.is_public ? 'Make Private' : 'Make Public';
-        }
-        
-        // Check if liked
-        if (currentUser) {
-            const { data: like } = await supabase
-                .from('likes')
-                .select('id')
-                .eq('artwork_id', artworkId)
-                .eq('user_id', currentUser.id)
-                .single();
-            
-            isLiked = !!like;
-            document.getElementById('like-text').textContent = isLiked ? 'Unlike' : 'Like';
-        }
-        
         // Load remixes
         await loadRemixes();
         
     } catch (error) {
         console.error('Error loading artwork:', error);
-    }
-}
-
-async function loadStats() {
-    try {
-        // Count likes
-        const { count: likesCount } = await supabase
-            .from('likes')
-            .select('*', { count: 'exact', head: true })
-            .eq('artwork_id', artwork.id);
-        
-        document.getElementById('like-count').textContent = likesCount || 0;
-        document.getElementById('artwork-likes').textContent = likesCount || 0;
-        
-        // Count remixes
-        const { count: remixesCount } = await supabase
-            .from('remixes')
-            .select('*', { count: 'exact', head: true })
-            .eq('original_id', artwork.id);
-        
-        document.getElementById('artwork-remixes').textContent = remixesCount || 0;
-        
-    } catch (error) {
-        console.error('Error loading stats:', error);
     }
 }
 
@@ -261,8 +170,7 @@ async function loadRemixes() {
                 artworks (
                     id,
                     title,
-                    thumbnail,
-                    users (username)
+                    thumbnail
                 )
             `)
             .eq('original_id', artwork.id);
@@ -284,7 +192,6 @@ async function loadRemixes() {
                 </div>
                 <div class="p-3 border-t-2 border-black">
                     <p class="font-black text-xs truncate">${remix.artworks.title}</p>
-                    <p class="text-xs text-slate-600 font-bold truncate">${remix.artworks.users?.username}</p>
                 </div>
             </a>
         `).join('');
@@ -294,77 +201,9 @@ async function loadRemixes() {
     }
 }
 
-// Like button
-document.getElementById('like-btn')?.addEventListener('click', async () => {
-    if (!currentUser) {
-        window.location.href = 'login.html';
-        return;
-    }
-    
-    try {
-        if (isLiked) {
-            await supabase
-                .from('likes')
-                .delete()
-                .eq('artwork_id', artwork.id)
-                .eq('user_id', currentUser.id);
-            isLiked = false;
-            document.getElementById('like-text').textContent = 'Like';
-        } else {
-            await supabase
-                .from('likes')
-                .insert([{
-                    artwork_id: artwork.id,
-                    user_id: currentUser.id
-                }]);
-            isLiked = true;
-            document.getElementById('like-text').textContent = 'Unlike';
-        }
-        
-        await loadStats();
-    } catch (error) {
-        console.error('Error toggling like:', error);
-    }
-});
-
 // Remix button
 document.getElementById('remix-btn')?.addEventListener('click', async () => {
     window.location.href = `editor.html?remix=${artwork.id}`;
-});
-
-// Toggle public
-document.getElementById('toggle-public-btn')?.addEventListener('click', async () => {
-    try {
-        const { error } = await supabase
-            .from('artworks')
-            .update({ is_public: !artwork.is_public })
-            .eq('id', artwork.id);
-        
-        if (error) throw error;
-        
-        artwork.is_public = !artwork.is_public;
-        document.getElementById('public-text').textContent = artwork.is_public ? 'Make Private' : 'Make Public';
-    } catch (error) {
-        console.error('Error toggling public:', error);
-    }
-});
-
-// Delete button
-document.getElementById('delete-btn')?.addEventListener('click', async () => {
-    if (!confirm('Are you sure you want to delete this artwork?')) return;
-    
-    try {
-        const { error } = await supabase
-            .from('artworks')
-            .delete()
-            .eq('id', artwork.id);
-        
-        if (error) throw error;
-        
-        window.location.href = 'dashboard.html';
-    } catch (error) {
-        console.error('Error deleting artwork:', error);
-    }
 });
 
 function hexToRgb(hex) {
@@ -377,7 +216,6 @@ function hexToRgb(hex) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await setupNav();
     await loadArtwork();
 });
 </script>

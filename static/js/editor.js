@@ -1,6 +1,5 @@
-// Pixel Art Editor
+// Pixel Art Editor - Anonymous Mode
 
-let currentUser = null;
 let artworkId = null;
 let remixId = null;
 
@@ -28,19 +27,13 @@ const defaultPalette = [
 ];
 
 async function init() {
-    currentUser = await getCurrentUser();
-    
-    // Allow anonymous users - don't redirect
-    
-    // Check for edit or remix mode
+    // Check for remix mode
     const urlParams = new URLSearchParams(window.location.search);
     artworkId = urlParams.get('id');
     remixId = urlParams.get('remix');
     
-    if (artworkId) {
-        await loadArtwork(artworkId);
-    } else if (remixId) {
-        await loadArtwork(remixId, true);
+    if (artworkId || remixId) {
+        await loadArtwork(artworkId || remixId, !!remixId);
     } else {
         initCanvas();
     }
@@ -138,8 +131,8 @@ function setupEventListeners() {
         canvas.dispatchEvent(mouseEvent);
     });
     
-    // Save button
-    document.getElementById('save-btn').addEventListener('click', saveArtwork);
+    // Share button
+    document.getElementById('share-btn').addEventListener('click', shareToGallery);
     
     // Export button
     document.getElementById('export-btn').addEventListener('click', exportArtwork);
@@ -261,7 +254,7 @@ function clearCanvas() {
     drawCanvas();
 }
 
-async function saveArtwork() {
+async function shareToGallery() {
     try {
         const title = document.getElementById('artwork-title').value || 'Untitled Artwork';
         
@@ -275,59 +268,41 @@ async function saveArtwork() {
             height: canvasHeight,
             thumbnail,
             is_public: true,
-            user_id: currentUser ? currentUser.id : null
+            user_id: null // Anonymous
         };
         
-        if (artworkId && !remixId && currentUser) {
-            // Update existing artwork (only if logged in)
-            const { error } = await supabase
-                .from('artworks')
-                .update(artworkData)
-                .eq('id', artworkId)
-                .eq('user_id', currentUser.id);
-            
-            if (error) throw error;
-            
-            alert('Artwork updated!');
-        } else {
-            // Create new artwork (anonymous or logged in)
-            const { data, error } = await supabase
-                .from('artworks')
-                .insert([artworkData])
-                .select()
-                .single();
-            
-            if (error) throw error;
-            
-            artworkId = data.id;
-            
-            // If this is a remix, create remix record
-            if (remixId && currentUser) {
-                await supabase
-                    .from('remixes')
-                    .insert([{
-                        artwork_id: artworkId,
-                        user_id: currentUser.id,
-                        original_id: remixId
-                    }]);
-            }
-            
-            alert('Artwork saved!');
-            
-            // Show share link
-            const shareUrl = `${window.location.origin}/view.html?id=${artworkId}`;
-            const shareMsg = `Artwork saved!\n\nShare link:\n${shareUrl}\n\n${!currentUser ? 'Tip: Sign up to manage your artworks!' : ''}`;
-            
-            if (confirm(shareMsg + '\n\nCopy link to clipboard?')) {
-                navigator.clipboard.writeText(shareUrl);
-            }
-            
-            window.location.href = `view.html?id=${artworkId}`;
+        // Create new artwork
+        const { data, error } = await supabase
+            .from('artworks')
+            .insert([artworkData])
+            .select()
+            .single();
+        
+        if (error) throw error;
+        
+        artworkId = data.id;
+        
+        // Show share link
+        const shareUrl = `${window.location.origin}/view.html?id=${artworkId}`;
+        
+        const copyToClipboard = confirm(
+            `✅ Shared to gallery!\n\nShare link:\n${shareUrl}\n\nCopy link to clipboard?`
+        );
+        
+        if (copyToClipboard) {
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                alert('Link copied to clipboard!');
+            });
         }
         
+        // Redirect to view page
+        setTimeout(() => {
+            window.location.href = `view.html?id=${artworkId}`;
+        }, 500);
+        
     } catch (error) {
-        console.error('Error saving artwork:', error);
-        alert('Failed to save artwork');
+        console.error('Error sharing artwork:', error);
+        alert('Failed to share artwork. Please try again.');
     }
 }
 
@@ -382,18 +357,6 @@ async function loadArtwork(id, isRemix = false) {
             .single();
         
         if (error) throw error;
-        
-        if (!isRemix && currentUser && data.user_id !== currentUser.id) {
-            alert('You do not have permission to edit this artwork');
-            window.location.href = 'dashboard.html';
-            return;
-        }
-        
-        if (!isRemix && !currentUser && data.user_id !== null) {
-            alert('You must be logged in to edit this artwork');
-            window.location.href = 'login.html';
-            return;
-        }
         
         // Load artwork data
         document.getElementById('artwork-title').value = isRemix ? `Remix of ${data.title}` : data.title;

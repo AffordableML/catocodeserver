@@ -4,11 +4,7 @@ async function loadGallery() {
     try {
         const { data: artworks, error } = await supabase
             .from('artworks')
-            .select(`
-                *,
-                users (username),
-                likes (count)
-            `)
+            .select('*')
             .eq('is_public', true)
             .order('created_at', { ascending: false })
             .limit(12);
@@ -40,8 +36,8 @@ async function loadGallery() {
                 <div class="p-4 border-t-2 border-black">
                     <h3 class="font-black text-sm mb-2 truncate">${artwork.title}</h3>
                     <div class="flex items-center justify-between text-xs text-slate-600 font-bold">
-                        <span><i class="fas fa-user mr-1"></i>${artwork.users?.username || 'Anonymous'}</span>
-                        <span><i class="fas fa-heart mr-1 text-red-500"></i>${artwork.likes?.length || 0}</span>
+                        <span><i class="fas fa-user mr-1"></i>Anonymous</span>
+                        <span>${artwork.width}x${artwork.height}</span>
                     </div>
                 </div>
             </a>
@@ -54,6 +50,5 @@ async function loadGallery() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async () => {
-    await checkAuthState();
     await loadGallery();
 });
