@@ -121,7 +121,7 @@ Now we'll add your Supabase credentials to the project.
 **Example:**
 ```javascript
 const SUPABASE_URL = 'https://abcdefghijklmnop.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiY2RlZmdoaWprbG1ub3AiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYwOTQ1OTIwMCwiZXhwIjoxOTI1MDM1MjAwfQ.abcdefghijklmnopqrstuvwxyz1234567890';
+const SUPABASE_ANON_KEY = 'abcdefghijklmnopqrstuvwxyz1234567890';
 ```
 
 ✅ **Supabase setup complete!**
