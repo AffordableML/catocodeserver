@@ -94,13 +94,6 @@
             errorMsg.classList.remove('hidden');
         }
     });
-    
-    // Redirect if already logged in
-    checkAuthState().then(user => {
-        if (user) {
-            window.location.href = 'dashboard.html';
-        }
-    });
 </script>
 
 </body>

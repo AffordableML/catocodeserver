@@ -8,7 +8,8 @@ async function loadDashboard() {
         currentUser = await getCurrentUser();
         
         if (!currentUser) {
-            window.location.href = 'login.html';
+            // Redirect to login if not authenticated
+            window.location.replace('login.html');
             return;
         }
 
