@@ -10,6 +10,7 @@ let frames = [];
 let currentFrameIndex = 0;
 let isPlaying = false;
 let playInterval = null;
+let fps = 10;
 
 // Drawing state
 let currentTool = 'pen';
@@ -87,6 +88,15 @@ function setupEventListeners() {
     document.getElementById('onion-skin-toggle').addEventListener('change', (e) => {
         onionSkinEnabled = e.target.checked;
         drawOnionSkin();
+    });
+    
+    // FPS input
+    document.getElementById('fps-input').addEventListener('change', (e) => {
+        fps = parseInt(e.target.value) || 10;
+        if (isPlaying) {
+            stopPlay();
+            startPlay();
+        }
     });
     
     // Import button
@@ -224,15 +234,20 @@ function drawCurrentFrame() {
 function drawOnionSkin() {
     onionCtx.clearRect(0, 0, onionCanvas.width, onionCanvas.height);
     
-    if (!onionSkinEnabled || currentFrameIndex === 0) return;
+    if (!onionSkinEnabled || currentFrameIndex === 0 || frames.length < 2) return;
     
     const previousFrame = frames[currentFrameIndex - 1];
     
     for (let y = 0; y < canvasHeight; y++) {
         for (let x = 0; x < canvasWidth; x++) {
             const index = y * canvasWidth + x;
-            onionCtx.fillStyle = previousFrame[index];
-            onionCtx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+            const color = previousFrame[index];
+            
+            // Only draw non-white pixels
+            if (color !== '#FFFFFF' && color !== '#ffffff') {
+                onionCtx.fillStyle = color;
+                onionCtx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+            }
         }
     }
 }
@@ -280,8 +295,27 @@ function clearCanvas() {
 }
 
 // Timeline functions
+function toggleTimeline() {
+    const content = document.getElementById('timeline-content');
+    const icon = document.getElementById('timeline-toggle-icon');
+    
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+    } else {
+        content.classList.add('hidden');
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+    }
+}
+
 function updateTimeline() {
     const timeline = document.getElementById('timeline');
+    const frameCount = document.getElementById('frame-count');
+    
+    frameCount.textContent = frames.length;
+    
     timeline.innerHTML = frames.map((frame, index) => `
         <div onclick="selectFrame(${index})" 
             class="frame-thumb ${index === currentFrameIndex ? 'ring-4 ring-[#20ffad]' : ''} 
@@ -349,10 +383,12 @@ function startPlay() {
     isPlaying = true;
     document.getElementById('play-btn').innerHTML = '<i class="fas fa-stop mr-1"></i>Stop';
     
+    const delay = 1000 / fps; // Convert FPS to milliseconds
+    
     playInterval = setInterval(() => {
         currentFrameIndex = (currentFrameIndex + 1) % frames.length;
         drawCurrentFrame();
-    }, 100); // 10 FPS
+    }, delay);
 }
 
 function stopPlay() {
@@ -372,25 +408,76 @@ function handleFileSelect(e) {
         const img = new Image();
         img.onload = () => {
             importedImage = img;
+            
+            // Set default values
+            document.getElementById('slice-cols').value = 1;
+            document.getElementById('slice-rows').value = 1;
+            
+            // Show modal and update preview
             document.getElementById('import-modal').classList.remove('hidden');
+            updateImportPreview();
         };
         img.src = event.target.result;
     };
     reader.readAsDataURL(file);
 }
 
+function updateImportPreview() {
+    if (!importedImage) return;
+    
+    const cols = parseInt(document.getElementById('slice-cols').value) || 1;
+    const rows = parseInt(document.getElementById('slice-rows').value) || 1;
+    
+    const frameWidth = Math.floor(importedImage.width / cols);
+    const frameHeight = Math.floor(importedImage.height / rows);
+    const totalFrames = cols * rows;
+    
+    // Update info
+    document.getElementById('frame-width-display').textContent = frameWidth;
+    document.getElementById('frame-height-display').textContent = frameHeight;
+    document.getElementById('total-frames-display').textContent = totalFrames;
+    
+    // Draw preview with grid
+    const previewCanvas = document.getElementById('import-preview-canvas');
+    previewCanvas.width = importedImage.width;
+    previewCanvas.height = importedImage.height;
+    const previewCtx = previewCanvas.getContext('2d');
+    
+    // Draw image
+    previewCtx.drawImage(importedImage, 0, 0);
+    
+    // Draw grid
+    previewCtx.strokeStyle = '#ff6b6b';
+    previewCtx.lineWidth = 2;
+    
+    // Vertical lines
+    for (let i = 1; i < cols; i++) {
+        previewCtx.beginPath();
+        previewCtx.moveTo(i * frameWidth, 0);
+        previewCtx.lineTo(i * frameWidth, importedImage.height);
+        previewCtx.stroke();
+    }
+    
+    // Horizontal lines
+    for (let i = 1; i < rows; i++) {
+        previewCtx.beginPath();
+        previewCtx.moveTo(0, i * frameHeight);
+        previewCtx.lineTo(importedImage.width, i * frameHeight);
+        previewCtx.stroke();
+    }
+}
+
 function confirmImport() {
-    const frameWidth = parseInt(document.getElementById('slice-width').value);
-    const frameHeight = parseInt(document.getElementById('slice-height').value);
+    const cols = parseInt(document.getElementById('slice-cols').value) || 1;
+    const rows = parseInt(document.getElementById('slice-rows').value) || 1;
     
     if (!importedImage) return;
     
-    // Calculate how many frames we can extract
-    const cols = Math.floor(importedImage.width / frameWidth);
-    const rows = Math.floor(importedImage.height / frameHeight);
+    const frameWidth = Math.floor(importedImage.width / cols);
+    const frameHeight = Math.floor(importedImage.height / rows);
     
-    if (cols === 0 || rows === 0) {
-        alert('Frame size is too large for the image!');
+    if (frameWidth === 0 || frameHeight === 0) {
+        alert('Invalid frame size!');
         return;
     }
     
@@ -489,6 +576,8 @@ function exportGIF() {
         return;
     }
     
+    const delay = 1000 / fps; // Use current FPS setting
+    
     const gif = new GIF({
         workers: 2,
         quality: 10,
@@ -510,7 +599,7 @@ function exportGIF() {
             }
         }
         
-        gif.addFrame(frameCanvas, { delay: 100 });
+        gif.addFrame(frameCanvas, { delay: delay });
     });
     
     gif.on('finished', (blob) => {

@@ -109,23 +109,38 @@
             </div>
             
             <!-- Timeline -->
-            <div class="border-t-4 border-black bg-white p-4">
-                <div class="flex items-center justify-between mb-4">
+            <div id="timeline-container" class="border-t-4 border-black bg-white">
+                <div class="p-4 border-b-2 border-black flex items-center justify-between cursor-pointer" onclick="toggleTimeline()">
                     <h3 class="font-black text-lg">Timeline</h3>
-                    <div class="flex gap-2">
-                        <button onclick="addFrame()" class="bg-[#20ffad] text-black px-4 py-2 font-black rounded-lg border-2 border-black neo-btn text-sm">
-                            <i class="fas fa-plus mr-1"></i>Add Frame
-                        </button>
-                        <button onclick="deleteFrame()" class="bg-red-500 text-white px-4 py-2 font-black rounded-lg border-2 border-black neo-btn text-sm">
-                            <i class="fas fa-trash mr-1"></i>Delete
-                        </button>
-                        <button id="play-btn" onclick="togglePlay()" class="bg-[#4f46e5] text-white px-4 py-2 font-black rounded-lg border-2 border-black neo-btn text-sm">
-                            <i class="fas fa-play mr-1"></i>Play
-                        </button>
-                    </div>
+                    <i id="timeline-toggle-icon" class="fas fa-chevron-up"></i>
                 </div>
-                <div id="timeline" class="flex gap-2 overflow-x-auto pb-2">
-                    <!-- Frames loaded via JS -->
+                <div id="timeline-content" class="p-4 hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-4">
+                            <div class="flex items-center gap-2">
+                                <label class="font-bold text-sm">FPS:</label>
+                                <input type="number" id="fps-input" value="10" min="1" max="60" 
+                                    class="w-16 px-2 py-1 border-2 border-black rounded font-bold text-sm">
+                            </div>
+                            <span class="text-sm font-bold text-slate-600">
+                                <span id="frame-count">1</span> frame(s)
+                            </span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="addFrame()" class="bg-[#20ffad] text-black px-4 py-2 font-black rounded-lg border-2 border-black neo-btn text-sm">
+                                <i class="fas fa-plus mr-1"></i>Add Frame
+                            </button>
+                            <button onclick="deleteFrame()" class="bg-red-500 text-white px-4 py-2 font-black rounded-lg border-2 border-black neo-btn text-sm">
+                                <i class="fas fa-trash mr-1"></i>Delete
+                            </button>
+                            <button id="play-btn" onclick="togglePlay()" class="bg-[#4f46e5] text-white px-4 py-2 font-black rounded-lg border-2 border-black neo-btn text-sm">
+                                <i class="fas fa-play mr-1"></i>Play
+                            </button>
+                        </div>
+                    </div>
+                    <div id="timeline" class="flex gap-2 overflow-x-auto pb-2">
+                        <!-- Frames loaded via JS -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -136,28 +151,56 @@
 <input type="file" id="file-input" accept="image/*" style="display: none;">
 
 <!-- Import Modal -->
-<div id="import-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white border-4 border-black rounded-2xl p-8 max-w-md w-full mx-4 neo-card">
+<div id="import-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white border-4 border-black rounded-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto neo-card">
         <h2 class="text-3xl font-black mb-4">Import Spritesheet</h2>
-        <p class="text-slate-600 font-bold mb-4">Slice the imported image into frames:</p>
         
-        <div class="space-y-4 mb-6">
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <!-- Settings -->
             <div>
-                <label class="block font-black mb-2">Frame Width (px)</label>
-                <input type="number" id="slice-width" value="32" min="1" class="w-full px-4 py-2 border-2 border-black rounded-lg font-bold">
+                <p class="text-slate-600 font-bold mb-4">Slice settings:</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block font-black mb-2">Columns</label>
+                        <input type="number" id="slice-cols" value="1" min="1" 
+                            oninput="updateImportPreview()"
+                            class="w-full px-4 py-2 border-2 border-black rounded-lg font-bold">
+                    </div>
+                    <div>
+                        <label class="block font-black mb-2">Rows</label>
+                        <input type="number" id="slice-rows" value="1" min="1" 
+                            oninput="updateImportPreview()"
+                            class="w-full px-4 py-2 border-2 border-black rounded-lg font-bold">
+                    </div>
+                    <div class="p-4 bg-slate-100 border-2 border-black rounded-lg">
+                        <p class="font-bold text-sm mb-2">Frame Size:</p>
+                        <p class="text-sm text-slate-600 font-bold">
+                            <span id="frame-width-display">-</span> x <span id="frame-height-display">-</span> px
+                        </p>
+                        <p class="font-bold text-sm mt-2">Total Frames:</p>
+                        <p class="text-sm text-slate-600 font-bold">
+                            <span id="total-frames-display">-</span>
+                        </p>
+                    </div>
+                </div>
             </div>
+            
+            <!-- Preview -->
             <div>
-                <label class="block font-black mb-2">Frame Height (px)</label>
-                <input type="number" id="slice-height" value="32" min="1" class="w-full px-4 py-2 border-2 border-black rounded-lg font-bold">
+                <p class="text-slate-600 font-bold mb-4">Preview:</p>
+                <div class="border-2 border-black rounded-lg p-4 bg-checkered overflow-auto max-h-96">
+                    <canvas id="import-preview-canvas" class="max-w-full" style="image-rendering: pixelated;"></canvas>
+                </div>
             </div>
         </div>
         
         <div class="flex gap-4">
             <button onclick="confirmImport()" class="flex-1 bg-[#20ffad] text-black px-6 py-3 font-black rounded-xl border-2 border-black neo-btn">
-                Import
+                <i class="fas fa-check mr-2"></i>Import
             </button>
             <button onclick="cancelImport()" class="flex-1 bg-white text-black px-6 py-3 font-black rounded-xl border-2 border-black neo-btn">
-                Cancel
+                <i class="fas fa-times mr-2"></i>Cancel
             </button>
         </div>
     </div>
