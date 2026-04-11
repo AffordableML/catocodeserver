@@ -3,7 +3,7 @@
 // Get it from: Supabase Dashboard → Settings → API → anon public key
 
 const SUPABASE_URL = 'https://bpjukhopjkbdfeuhzdvv.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwanVraG9wamtiZGZldWh6ZHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MTcwNjQsImV4cCI6MjA5MTQ5MzA2NH0.1DB3G6HkWEnxUXtoasvkH8BE356VYsKDHwLaiR2psIE';
 
 // Initialize Supabase client
 let supabase;
