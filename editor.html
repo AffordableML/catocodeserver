@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor - CatoArt</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body class="bg-white overflow-hidden">
+
+<div class="dotted-bg"></div>
+
+<div class="content-wrapper h-screen flex flex-col">
+    <!-- Top Bar -->
+    <div class="border-b-4 border-black bg-white relative z-20 flex-shrink-0">
+        <div class="px-8 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <a href="dashboard.html" class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-black border-2 border-black rounded-lg flex items-center justify-center">
+                        <i class="fas fa-palette text-white text-sm"></i>
+                    </div>
+                    <span class="font-black text-xl">CatoArt</span>
+                </a>
+                <input type="text" id="artwork-title" placeholder="Untitled Artwork" 
+                    class="px-4 py-2 border-2 border-black rounded-lg font-bold text-lg focus:outline-none focus:ring-2 focus:ring-[#20ffad]">
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button id="save-btn" class="bg-[#20ffad] text-black px-6 py-2 font-black rounded-lg border-2 border-black neo-btn">
+                    <i class="fas fa-save mr-2"></i>Save
+                </button>
+                <button id="export-btn" class="bg-[#4f46e5] text-white px-6 py-2 font-black rounded-lg border-2 border-black neo-btn">
+                    <i class="fas fa-download mr-2"></i>Export
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Editor Content -->
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Tools Panel -->
+        <div class="w-64 border-r-4 border-black bg-white p-6 overflow-y-auto flex-shrink-0">
+            <h3 class="font-black text-lg mb-4">Tools</h3>
+            
+            <div class="space-y-2 mb-6">
+                <button onclick="setTool('pen')" class="tool-btn active w-full bg-[#20ffad] text-black px-4 py-3 font-black rounded-lg border-2 border-black neo-btn text-left">
+                    <i class="fas fa-pen mr-2"></i>Pen
+                </button>
+                <button onclick="setTool('eraser')" class="tool-btn w-full bg-white text-black px-4 py-3 font-black rounded-lg border-2 border-black neo-btn text-left">
+                    <i class="fas fa-eraser mr-2"></i>Eraser
+                </button>
+                <button onclick="setTool('fill')" class="tool-btn w-full bg-white text-black px-4 py-3 font-black rounded-lg border-2 border-black neo-btn text-left">
+                    <i class="fas fa-fill-drip mr-2"></i>Fill
+                </button>
+                <button onclick="setTool('eyedropper')" class="tool-btn w-full bg-white text-black px-4 py-3 font-black rounded-lg border-2 border-black neo-btn text-left">
+                    <i class="fas fa-eye-dropper mr-2"></i>Eyedropper
+                </button>
+            </div>
+            
+            <h3 class="font-black text-lg mb-4">Color</h3>
+            <div class="mb-4">
+                <input type="color" id="color-picker" value="#000000" class="w-full h-16 border-2 border-black rounded-lg cursor-pointer">
+            </div>
+            
+            <h3 class="font-black text-lg mb-4">Palette</h3>
+            <div id="color-palette" class="grid grid-cols-4 gap-2 mb-6">
+                <!-- Generated via JS -->
+            </div>
+            
+            <h3 class="font-black text-lg mb-4">Canvas Size</h3>
+            <div class="space-y-2">
+                <button onclick="resizeCanvas(16, 16)" class="w-full bg-white text-black px-4 py-2 font-bold rounded-lg border-2 border-black neo-btn text-left text-sm">
+                    16x16
+                </button>
+                <button onclick="resizeCanvas(32, 32)" class="w-full bg-white text-black px-4 py-2 font-bold rounded-lg border-2 border-black neo-btn text-left text-sm">
+                    32x32
+                </button>
+                <button onclick="resizeCanvas(64, 64)" class="w-full bg-white text-black px-4 py-2 font-bold rounded-lg border-2 border-black neo-btn text-left text-sm">
+                    64x64
+                </button>
+            </div>
+            
+            <div class="mt-6 pt-6 border-t-2 border-black">
+                <button onclick="clearCanvas()" class="w-full bg-red-500 text-white px-4 py-3 font-black rounded-lg border-2 border-black neo-btn">
+                    <i class="fas fa-trash mr-2"></i>Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="flex-1 flex items-center justify-center p-8 overflow-auto">
+            <div class="bg-white border-4 border-black rounded-2xl p-8 neo-card">
+                <div class="bg-checkered rounded-lg p-4 inline-block">
+                    <canvas id="pixel-canvas" width="512" height="512" class="border-2 border-black cursor-crosshair" style="image-rendering: pixelated;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="static/js/config.js"></script>
+<script src="static/js/auth.js"></script>
+<script src="static/js/editor.js"></script>
+
+</body>
+</html>

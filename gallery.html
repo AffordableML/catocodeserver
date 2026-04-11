@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallery - CatoArt</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body class="bg-white">
+
+<div class="dotted-bg"></div>
+
+<div class="content-wrapper">
+    <!-- Navigation -->
+    <nav class="border-b-4 border-black bg-white relative z-20">
+        <div class="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-black border-2 border-black rounded-lg flex items-center justify-center">
+                    <i class="fas fa-palette text-white"></i>
+                </div>
+                <span class="font-black text-2xl">CatoArt</span>
+            </a>
+            
+            <div class="flex items-center gap-4">
+                <div id="auth-nav" class="flex items-center gap-4">
+                    <!-- Loaded via JS -->
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Gallery Content -->
+    <div class="max-w-7xl mx-auto px-8 py-12">
+        <!-- Header -->
+        <div class="mb-12">
+            <h1 class="text-5xl font-black mb-4">Community Gallery</h1>
+            <p class="text-xl text-slate-600 font-bold">Explore amazing pixel art from our community</p>
+        </div>
+
+        <!-- Filters -->
+        <div class="flex flex-wrap gap-4 mb-8">
+            <button onclick="filterGallery('recent')" class="filter-btn active bg-[#20ffad] text-black px-6 py-2 font-black rounded-lg border-2 border-black neo-btn">
+                <i class="fas fa-clock mr-2"></i>Recent
+            </button>
+            <button onclick="filterGallery('popular')" class="filter-btn bg-white text-black px-6 py-2 font-black rounded-lg border-2 border-black neo-btn">
+                <i class="fas fa-fire mr-2"></i>Popular
+            </button>
+            <button onclick="filterGallery('remixed')" class="filter-btn bg-white text-black px-6 py-2 font-black rounded-lg border-2 border-black neo-btn">
+                <i class="fas fa-copy mr-2"></i>Most Remixed
+            </button>
+        </div>
+
+        <!-- Gallery Grid -->
+        <div id="gallery-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Loaded via JS -->
+        </div>
+
+        <!-- Load More -->
+        <div class="text-center">
+            <button id="load-more-btn" class="bg-[#4f46e5] text-white px-8 py-3 font-black rounded-xl border-2 border-black neo-btn">
+                <i class="fas fa-arrow-down mr-2"></i>Load More
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="static/js/config.js"></script>
+<script src="static/js/auth.js"></script>
+<script src="static/js/gallery.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - CatoArt</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body class="dotted-bg min-h-screen flex items-center justify-center p-8">
+
+<div class="max-w-md w-full">
+    <div class="text-center mb-8">
+        <a href="index.html" class="inline-flex items-center gap-2 text-2xl font-black text-black mb-4">
+            <div class="w-10 h-10 bg-[#ff6b6b] border-2 border-black rounded-lg flex items-center justify-center">
+                <i class="fas fa-palette text-white"></i>
+            </div>
+            CatoArt
+        </a>
+        <h1 class="text-4xl font-black text-black mt-4">Create Account</h1>
+        <p class="text-slate-600 font-bold mt-2">Join the pixel art community</p>
+    </div>
+
+    <div class="bg-white border-2 border-black rounded-2xl p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+        <div id="error-message" class="hidden mb-4 p-4 border-2 border-black rounded-lg bg-red-100">
+            <p class="font-bold text-sm text-black"></p>
+        </div>
+
+        <div id="success-message" class="hidden mb-4 p-4 border-2 border-black rounded-lg bg-green-100">
+            <p class="font-bold text-sm text-black"></p>
+        </div>
+
+        <form id="register-form">
+            <div class="mb-4">
+                <label class="block text-sm font-black text-black mb-2">Username</label>
+                <input type="text" id="username" required
+                    class="w-full px-4 py-3 border-2 border-black rounded-lg font-bold focus:outline-none focus:ring-2 focus:ring-[#20ffad]">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-black text-black mb-2">Email</label>
+                <input type="email" id="email" required
+                    class="w-full px-4 py-3 border-2 border-black rounded-lg font-bold focus:outline-none focus:ring-2 focus:ring-[#20ffad]">
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-black text-black mb-2">Password</label>
+                <input type="password" id="password" required minlength="6"
+                    class="w-full px-4 py-3 border-2 border-black rounded-lg font-bold focus:outline-none focus:ring-2 focus:ring-[#20ffad]">
+            </div>
+
+            <button type="submit" class="w-full bg-[#20ffad] text-black px-6 py-4 font-black rounded-xl border-2 border-black neo-btn text-lg">
+                SIGN UP <i class="fas fa-rocket ml-2"></i>
+            </button>
+        </form>
+
+        <div class="mt-6 text-center">
+            <p class="text-sm font-bold text-slate-600">
+                Already have an account?
+                <a href="login.html" class="text-[#4f46e5] hover:underline font-black">Login</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script src="static/js/config.js"></script>
+<script src="static/js/auth.js"></script>
+<script>
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const errorMsg = document.getElementById('error-message');
+        const successMsg = document.getElementById('success-message');
+        
+        errorMsg.classList.add('hidden');
+        successMsg.classList.add('hidden');
+        
+        try {
+            await signUp(email, password, username);
+            successMsg.querySelector('p').textContent = 'Account created! Please check your email to verify.';
+            successMsg.classList.remove('hidden');
+            
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 2000);
+        } catch (error) {
+            errorMsg.querySelector('p').textContent = error.message;
+            errorMsg.classList.remove('hidden');
+        }
+    });
+    
+    // Redirect if already logged in
+    checkAuthState().then(user => {
+        if (user) {
+            window.location.href = 'dashboard.html';
+        }
+    });
+</script>
+
+</body>
+</html>

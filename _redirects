@@ -1,0 +1,9 @@
+# Cloudflare Pages / Netlify redirects
+# SPA-like routing for static site
+
+/dashboard /dashboard.html 200
+/gallery /gallery.html 200
+/editor /editor.html 200
+/view/* /view.html 200
+/login /login.html 200
+/register /register.html 200

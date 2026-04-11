@@ -1,87 +1,141 @@
-# 🐱 CatoCode
+# CatoArt - Pixel Art Community Platform
 
-<p align="center">
-  <img src="static/images/hero.png" alt="CatoCode Hero" width="800">
-</p>
-
----
-
-<p align="center">
-  <strong>Building the Future of Web Development, One Block at a Time.</strong>
-</p>
-
-<p align="center">
-  <a href="#-features">Features</a> •
-  <a href="#-tech-stack">Tech Stack</a> •
-  <a href="#-getting-started">Getting Started</a> •
-</p>
-
----
+A modern pixel art editor and community platform built with static HTML and Supabase. Deploy anywhere - Cloudflare Pages, GitHub Pages, Netlify, or any static host!
 
 ## ✨ Features
 
-CatoCode is a comprehensive web-based development environment designed for creators, developers, and data scientists.
+- 🎨 **Pixel Art Editor** - Draw and animate pixel art
+- 👥 **User Accounts** - Sign up with email
+- 🖼️ **Community Gallery** - Share and discover artwork
+- ❤️ **Like System** - Like your favorite pieces
+- 🔄 **Remix** - Build on others' work
+- 📱 **Fully Responsive** - Works on all devices
+- ⚡ **Static Site** - Deploy anywhere, no server needed!
 
-*   📁 **Project Management**: Organize your code projects and games in a centralized dashboard.
-*   🌍 **One-Click Publishing**: Share your creations with the world instantly.
-*   🛠️ **Custom Tile & Sound Engine**: Design your own pixel art tiles.
-*   🎨 **Pixel Editor**: Draw animations and share them with links for others to remix.
+## 🚀 Quick Start
 
-## 🚀 Tech Stack
+### 1. Setup Supabase
 
-- **Backend**: [Python](https://www.python.org/) with [Flask](https://flask.palletsprojects.com/)
-- **Database**: [SQLite](https://www.sqlite.org/)
-- **Frontend**: Vanilla Javascript, CSS3 (Modern Glassmorphism Design)
-- **Engine**: Custom 2D Canvas Engine for Games
-- **Scientific Computing**: [Pyodide](https://pyodide.org/) for browser-based Python execution
+Follow the detailed instructions in [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md)
 
-## 🛠 Getting Started
+Quick summary:
+1. Run SQL commands in Supabase SQL Editor
+2. Get your anon key from Supabase Dashboard
+3. Update `static/js/config.js` with your anon key
 
-### Prerequisites
+### 2. Deploy
 
-- Python 3.8+
-- pip
+**Cloudflare Pages:**
+```bash
+git push origin main
+# Connect repo in Cloudflare Pages dashboard
+```
 
-### Installation
+**GitHub Pages:**
+```bash
+git push origin main
+# Enable Pages in repo settings
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/AffordableML/catocodeserver.git
-   cd catocodeserver
-   ```
+**Local Development:**
+```bash
+# Use any static server
+python -m http.server 8000
+# or
+npx serve
+```
 
-2. **Set up a virtual environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+## 📁 Project Structure
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+```
+CatoArt/
+├── index.html           # Homepage with gallery preview
+├── login.html           # Login page
+├── register.html        # Sign up page
+├── dashboard.html       # User dashboard (coming)
+├── gallery.html         # Full gallery (coming)
+├── editor.html          # Pixel art editor (coming)
+├── view.html            # View artwork (coming)
+├── static/
+│   ├── css/
+│   │   └── style.css    # Neo-brutalist styles
+│   └── js/
+│       ├── config.js    # Supabase config
+│       ├── auth.js      # Auth functions
+│       └── main.js      # Homepage logic
+└── SETUP_INSTRUCTIONS.md
+```
 
-4. **Initialize the database**
-   ```bash
-   python init_db_fix.py
-   ```
+## 🛠️ Tech Stack
 
-5. **Run the server**
-   ```bash
-   python app.py
-   ```
+- **Frontend**: Pure HTML, CSS (Tailwind), Vanilla JavaScript
+- **Backend**: Supabase (PostgreSQL + Auth + Storage)
+- **Hosting**: Static (Cloudflare Pages, GitHub Pages, etc.)
+- **No Build Step**: Deploy directly!
 
-Open your browser and navigate to `http://localhost:5000` to start building!
+## 🎨 Design
 
-### Demo Account
+Neo-brutalist design with:
+- Bold borders and shadows
+- Bright color palette
+- Playful animations
+- Dotted background pattern
+- Nunito font family
 
-A demo account has been pre-created:
+## 🔒 Security
 
-- **Username**: `meep`
-- **Password**: `meep`
+- Row Level Security (RLS) enabled on all tables
+- Users can only modify their own data
+- Public artworks visible to all
+- Private artworks only visible to owner
 
-You can also register a new account through the registration page.
+## 📊 Database Schema
 
-<p align="center">
-  Built with ❤️ by <a href="https://github.com/AffordableML">AffordableML</a>
-</p>
+### Tables
+- `users` - User profiles
+- `artworks` - Pixel art creations
+- `likes` - Artwork likes
+- `remixes` - Remix tracking
+
+See [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md) for full schema.
+
+## 🤝 Contributing
+
+This is a personal project, but feel free to fork and customize!
+
+## 📝 License
+
+MIT License - feel free to use for your own projects!
+
+## 🎯 Roadmap
+
+- [x] User authentication
+- [x] Homepage with gallery
+- [x] Login/Register pages
+- [x] Dashboard page
+- [x] Full gallery page
+- [x] Pixel art editor
+- [x] View artwork page
+- [x] Like functionality
+- [x] Remix functionality
+- [x] Thumbnail generation
+- [x] Export as PNG/GIF
+
+**All features complete!** 🎉
+
+## 💡 Why Static?
+
+- ✅ Deploy anywhere
+- ✅ No server costs
+- ✅ Instant global CDN
+- ✅ Simple to maintain
+- ✅ Scales automatically
+- ✅ Fast performance
+
+## 🆘 Support
+
+Check [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md) for detailed setup help and troubleshooting.
+
+---
+
+Made with ❤️ for pixel artists

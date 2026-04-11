@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CatoArt - Create Amazing Pixel Art</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body class="bg-white overflow-x-hidden">
+
+<div class="dotted-bg"></div>
+
+<div class="content-wrapper">
+    <!-- Floating Stickers -->
+    <div class="hidden lg:block">
+        <div class="sticker bg-[#c7f9cc] border-2 border-black px-4 py-2 rounded-lg font-mono font-bold neo-btn"
+            style="top: 25%; left: 10%; --rot: -10deg;">Draw</div>
+        <div class="sticker bg-[#e0b0ff] border-2 border-black px-4 py-2 rounded-lg font-mono font-bold neo-btn"
+            style="top: 60%; left: 15%; --rot: 15deg; animation-delay: 1s;">Animate</div>
+        <div class="sticker bg-[#ffc900] border-2 border-black px-4 py-2 rounded-lg font-mono font-bold neo-btn"
+            style="top: 30%; right: 12%; --rot: 8deg; animation-delay: 2s;">Share</div>
+        <div class="sticker bg-[#ff6b6b] text-white border-2 border-black px-4 py-2 rounded-lg font-mono font-bold neo-btn"
+            style="top: 65%; right: 18%; --rot: -5deg; animation-delay: 0.5s;">Remix</div>
+    </div>
+
+    <!-- Hero Section -->
+    <div class="py-32 px-8 min-h-screen flex flex-col items-center justify-center text-center relative">
+        <div class="max-w-4xl relative z-10 flex flex-col items-center">
+            <div class="mb-8 inline-block transform -rotate-2">
+                <span class="bg-yellow-200 text-black border-2 border-black px-4 py-2 font-mono text-sm font-bold shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] rounded-md">
+                    <i class="fas fa-palette mr-2 text-[#ff6b6b]"></i> // PIXEL PERFECT CREATION
+                </span>
+            </div>
+
+            <h1 class="text-6xl md:text-8xl font-black text-black leading-[1.1] mb-8 tracking-tight">
+                CREATE <span class="text-[#ff6b6b] inline-block transform hover:scale-105 transition-transform">PIXEL ART</span><br>
+                IN SECONDS.
+            </h1>
+
+            <p class="text-xl text-slate-600 mb-12 max-w-2xl font-bold leading-relaxed">
+                Draw stunning sprites, animate characters, and share with the community—
+                <span class="bg-[#20ffad] px-2 border border-black rounded transform -rotate-1 inline-block">join thousands of artists.</span>
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-6">
+                <a href="editor.html" class="bg-[#20ffad] text-black px-8 py-4 text-xl font-black rounded-xl border-2 border-black neo-btn flex items-center justify-center gap-3">
+                    START DRAWING <i class="fas fa-palette"></i>
+                </a>
+                
+                <div id="auth-buttons" class="flex gap-4">
+                    <a href="login.html" class="bg-white text-black px-8 py-4 text-xl font-black rounded-xl border-2 border-black neo-btn flex items-center justify-center gap-3">
+                        LOGIN <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+
+                <div id="dashboard-button" class="hidden">
+                    <a href="dashboard.html" class="bg-white text-black px-8 py-4 text-xl font-black rounded-xl border-2 border-black neo-btn flex items-center justify-center gap-3">
+                        DASHBOARD <i class="fas fa-tachometer-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gallery Section -->
+    <div class="py-24 bg-white border-y-4 border-black relative z-10">
+        <div class="max-w-7xl mx-auto px-8">
+            <div class="flex items-center justify-between mb-12">
+                <div class="flex items-center gap-4">
+                    <h2 class="text-4xl font-black text-black">Community Gallery</h2>
+                    <div class="flex-1 border-b-4 border-black border-dashed mt-2"></div>
+                </div>
+                <a href="gallery.html" class="bg-[#4f46e5] text-white px-6 py-3 font-black rounded-xl border-2 border-black neo-btn">
+                    VIEW ALL <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+
+            <div id="gallery-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Gallery items loaded via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="py-12 bg-white border-t-4 border-black relative z-10">
+        <div class="max-w-6xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-black border-2 border-black rounded-lg flex items-center justify-center">
+                    <i class="fas fa-palette text-white text-sm"></i>
+                </div>
+                <span class="font-black text-black text-xl">CatoArt © 2026</span>
+            </div>
+            <div class="flex gap-6 font-bold">
+                <span class="text-slate-500">Made with love for pixel artists</span>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<script src="static/js/config.js"></script>
+<script src="static/js/auth.js"></script>
+<script src="static/js/main.js"></script>
+
+</body>
+</html>

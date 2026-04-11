@@ -1,33 +1,72 @@
-/* Custom scrollbar for file tree */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+* {
+    font-family: 'Nunito', sans-serif;
 }
 
-::-webkit-scrollbar-track {
-    background: transparent;
+.font-mono {
+    font-family: 'JetBrains Mono', monospace;
 }
 
-::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
+.dotted-bg {
+    background-color: #f8fafc;
+    background-image: radial-gradient(#cbd5e1 2px, transparent 2px);
+    background-size: 30px 30px;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+.content-wrapper {
+    position: relative;
+    z-index: 10;
+    overflow-x: hidden;
 }
 
-/* Activity Bar Active State */
-.activity-tab.active {
-    border-left: 2px solid #3b82f6;
+.neo-btn {
+    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+    transition: all 0.2s ease;
 }
 
-/* Editor Font override */
-#editor {
-    font-family: 'JetBrains Mono', monospace !important;
+.neo-btn:hover {
+    box-shadow: 0px 0px 0px 0px rgba(0, 0, 0, 1);
+    transform: translate(4px, 4px);
 }
 
-/* Ensure modal centers with Tailwind 'grid' class */
-#share-modal.grid {
-    display: grid;
+.neo-card {
+    box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 1);
+    transition: all 0.2s ease;
+}
+
+.neo-card:hover {
+    box-shadow: 10px 10px 0px 0px rgba(0, 0, 0, 1);
+    transform: translateY(-4px);
+}
+
+.sticker {
+    position: absolute;
+    animation: float 6s ease-in-out infinite;
+    z-index: 5;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0) rotate(var(--rot));
+    }
+    50% {
+        transform: translateY(-15px) rotate(calc(var(--rot) + 5deg));
+    }
+}
+
+canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+.bg-checkered {
+    background-image:
+        linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+        linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+        linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
 }
