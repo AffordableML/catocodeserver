@@ -1,22 +1,30 @@
-// Pixel Art Editor - Anonymous Mode
-
-let artworkId = null;
-let remixId = null;
+// Pixel Art & Animation Editor
 
 // Canvas settings
 let canvasWidth = 32;
 let canvasHeight = 32;
 let pixelSize = 16;
-let pixels = [];
+
+// Animation frames
+let frames = [];
+let currentFrameIndex = 0;
+let isPlaying = false;
+let playInterval = null;
 
 // Drawing state
 let currentTool = 'pen';
 let currentColor = '#000000';
 let isDrawing = false;
+let onionSkinEnabled = false;
 
 // Canvas elements
 const canvas = document.getElementById('pixel-canvas');
 const ctx = canvas.getContext('2d');
+const onionCanvas = document.getElementById('onion-canvas');
+const onionCtx = onionCanvas.getContext('2d');
+
+// Import state
+let importedImage = null;
 
 // Default color palette
 const defaultPalette = [
@@ -26,60 +34,26 @@ const defaultPalette = [
     '#98D8C8', '#F7DC6F', '#BB8FCE', '#85929E'
 ];
 
-async function init() {
-    // Check for remix mode
-    const urlParams = new URLSearchParams(window.location.search);
-    artworkId = urlParams.get('id');
-    remixId = urlParams.get('remix');
+function init() {
+    // Initialize with one empty frame
+    frames.push(createEmptyFrame());
     
-    if (artworkId || remixId) {
-        await loadArtwork(artworkId || remixId, !!remixId);
-    } else {
-        initCanvas();
-    }
-    
+    setupCanvas();
     setupColorPalette();
     setupEventListeners();
+    updateTimeline();
+    drawCurrentFrame();
 }
 
-function initCanvas() {
-    // Initialize pixel array
-    pixels = new Array(canvasWidth * canvasHeight).fill('#FFFFFF');
-    
-    // Set canvas display size
+function createEmptyFrame() {
+    return new Array(canvasWidth * canvasHeight).fill('#FFFFFF');
+}
+
+function setupCanvas() {
     canvas.width = canvasWidth * pixelSize;
     canvas.height = canvasHeight * pixelSize;
-    
-    drawCanvas();
-}
-
-function drawCanvas() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw pixels
-    for (let y = 0; y < canvasHeight; y++) {
-        for (let x = 0; x < canvasWidth; x++) {
-            const index = y * canvasWidth + x;
-            ctx.fillStyle = pixels[index];
-            ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
-        }
-    }
-    
-    // Draw grid
-    ctx.strokeStyle = '#e2e8f0';
-    ctx.lineWidth = 1;
-    for (let x = 0; x <= canvasWidth; x++) {
-        ctx.beginPath();
-        ctx.moveTo(x * pixelSize, 0);
-        ctx.lineTo(x * pixelSize, canvas.height);
-        ctx.stroke();
-    }
-    for (let y = 0; y <= canvasHeight; y++) {
-        ctx.beginPath();
-        ctx.moveTo(0, y * pixelSize);
-        ctx.lineTo(canvas.width, y * pixelSize);
-        ctx.stroke();
-    }
+    onionCanvas.width = canvasWidth * pixelSize;
+    onionCanvas.height = canvasHeight * pixelSize;
 }
 
 function setupColorPalette() {
@@ -105,37 +79,36 @@ function setupEventListeners() {
     canvas.addEventListener('mouseleave', stopDrawing);
     
     // Touch events
-    canvas.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent('mousedown', {
-            clientX: touch.clientX,
-            clientY: touch.clientY
-        });
-        canvas.dispatchEvent(mouseEvent);
+    canvas.addEventListener('touchstart', handleTouch);
+    canvas.addEventListener('touchmove', handleTouch);
+    canvas.addEventListener('touchend', stopDrawing);
+    
+    // Onion skin toggle
+    document.getElementById('onion-skin-toggle').addEventListener('change', (e) => {
+        onionSkinEnabled = e.target.checked;
+        drawOnionSkin();
     });
     
-    canvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent('mousemove', {
-            clientX: touch.clientX,
-            clientY: touch.clientY
-        });
-        canvas.dispatchEvent(mouseEvent);
+    // Import button
+    document.getElementById('import-btn').addEventListener('click', () => {
+        document.getElementById('file-input').click();
     });
     
-    canvas.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        const mouseEvent = new MouseEvent('mouseup', {});
-        canvas.dispatchEvent(mouseEvent);
+    document.getElementById('file-input').addEventListener('change', handleFileSelect);
+    
+    // Export buttons
+    document.getElementById('export-png-btn').addEventListener('click', exportPNG);
+    document.getElementById('export-gif-btn').addEventListener('click', exportGIF);
+}
+
+function handleTouch(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 'mousemove', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
     });
-    
-    // Share button
-    document.getElementById('share-btn').addEventListener('click', shareToGallery);
-    
-    // Export button
-    document.getElementById('export-btn').addEventListener('click', exportArtwork);
+    canvas.dispatchEvent(mouseEvent);
 }
 
 function getPixelCoords(e) {
@@ -162,24 +135,25 @@ function draw(e) {
     if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight) return;
     
     const index = y * canvasWidth + x;
+    const currentFrame = frames[currentFrameIndex];
     
     switch (currentTool) {
         case 'pen':
-            pixels[index] = currentColor;
-            drawCanvas();
+            currentFrame[index] = currentColor;
+            drawCurrentFrame();
             break;
         case 'eraser':
-            pixels[index] = '#FFFFFF';
-            drawCanvas();
+            currentFrame[index] = '#FFFFFF';
+            drawCurrentFrame();
             break;
         case 'fill':
             if (isDrawing) {
-                floodFill(x, y, pixels[index], currentColor);
+                floodFill(x, y, currentFrame[index], currentColor);
                 isDrawing = false;
             }
             break;
         case 'eyedropper':
-            setColor(pixels[index]);
+            setColor(currentFrame[index]);
             break;
     }
 }
@@ -191,6 +165,7 @@ function stopDrawing() {
 function floodFill(x, y, targetColor, fillColor) {
     if (targetColor === fillColor) return;
     
+    const currentFrame = frames[currentFrameIndex];
     const stack = [[x, y]];
     const visited = new Set();
     
@@ -202,21 +177,69 @@ function floodFill(x, y, targetColor, fillColor) {
         if (cx < 0 || cx >= canvasWidth || cy < 0 || cy >= canvasHeight) continue;
         
         const index = cy * canvasWidth + cx;
-        if (pixels[index] !== targetColor) continue;
+        if (currentFrame[index] !== targetColor) continue;
         
         visited.add(key);
-        pixels[index] = fillColor;
+        currentFrame[index] = fillColor;
         
         stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
     }
     
-    drawCanvas();
+    drawCurrentFrame();
+}
+
+function drawCurrentFrame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const currentFrame = frames[currentFrameIndex];
+    
+    // Draw pixels
+    for (let y = 0; y < canvasHeight; y++) {
+        for (let x = 0; x < canvasWidth; x++) {
+            const index = y * canvasWidth + x;
+            ctx.fillStyle = currentFrame[index];
+            ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+        }
+    }
+    
+    // Draw grid
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= canvasWidth; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * pixelSize, 0);
+        ctx.lineTo(x * pixelSize, canvas.height);
+        ctx.stroke();
+    }
+    for (let y = 0; y <= canvasHeight; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * pixelSize);
+        ctx.lineTo(canvas.width, y * pixelSize);
+        ctx.stroke();
+    }
+    
+    drawOnionSkin();
+}
+
+function drawOnionSkin() {
+    onionCtx.clearRect(0, 0, onionCanvas.width, onionCanvas.height);
+    
+    if (!onionSkinEnabled || currentFrameIndex === 0) return;
+    
+    const previousFrame = frames[currentFrameIndex - 1];
+    
+    for (let y = 0; y < canvasHeight; y++) {
+        for (let x = 0; x < canvasWidth; x++) {
+            const index = y * canvasWidth + x;
+            onionCtx.fillStyle = previousFrame[index];
+            onionCtx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+        }
+    }
 }
 
 function setTool(tool) {
     currentTool = tool;
     
-    // Update button states
     document.querySelectorAll('.tool-btn').forEach(btn => {
         btn.classList.remove('active', 'bg-[#20ffad]');
         btn.classList.add('bg-white');
@@ -231,157 +254,274 @@ function setColor(color) {
 }
 
 function resizeCanvas(width, height) {
-    if (!confirm(`Resize canvas to ${width}x${height}? This will clear your current work.`)) {
+    if (!confirm(`Resize canvas to ${width}x${height}? This will clear all frames.`)) {
         return;
     }
     
     canvasWidth = width;
     canvasHeight = height;
     
-    // Adjust pixel size for display
     const maxSize = 512;
     pixelSize = Math.floor(maxSize / Math.max(width, height));
     
-    initCanvas();
+    frames = [createEmptyFrame()];
+    currentFrameIndex = 0;
+    
+    setupCanvas();
+    updateTimeline();
+    drawCurrentFrame();
 }
 
 function clearCanvas() {
-    if (!confirm('Clear the entire canvas? This cannot be undone.')) {
+    if (!confirm('Clear current frame?')) return;
+    
+    frames[currentFrameIndex] = createEmptyFrame();
+    drawCurrentFrame();
+}
+
+// Timeline functions
+function updateTimeline() {
+    const timeline = document.getElementById('timeline');
+    timeline.innerHTML = frames.map((frame, index) => `
+        <div onclick="selectFrame(${index})" 
+            class="frame-thumb ${index === currentFrameIndex ? 'ring-4 ring-[#20ffad]' : ''} 
+            w-24 h-24 border-2 border-black rounded-lg cursor-pointer bg-checkered flex items-center justify-center overflow-hidden neo-btn">
+            <canvas id="thumb-${index}" width="${canvasWidth}" height="${canvasHeight}" 
+                style="image-rendering: pixelated; max-width: 100%; max-height: 100%;"></canvas>
+        </div>
+    `).join('');
+    
+    // Draw thumbnails
+    frames.forEach((frame, index) => {
+        const thumbCanvas = document.getElementById(`thumb-${index}`);
+        if (thumbCanvas) {
+            const thumbCtx = thumbCanvas.getContext('2d');
+            for (let y = 0; y < canvasHeight; y++) {
+                for (let x = 0; x < canvasWidth; x++) {
+                    const pixelIndex = y * canvasWidth + x;
+                    thumbCtx.fillStyle = frame[pixelIndex];
+                    thumbCtx.fillRect(x, y, 1, 1);
+                }
+            }
+        }
+    });
+}
+
+function selectFrame(index) {
+    if (isPlaying) stopPlay();
+    currentFrameIndex = index;
+    updateTimeline();
+    drawCurrentFrame();
+}
+
+function addFrame() {
+    frames.push(createEmptyFrame());
+    currentFrameIndex = frames.length - 1;
+    updateTimeline();
+    drawCurrentFrame();
+}
+
+function deleteFrame() {
+    if (frames.length === 1) {
+        alert('Cannot delete the last frame!');
         return;
     }
     
-    pixels = new Array(canvasWidth * canvasHeight).fill('#FFFFFF');
-    drawCanvas();
+    if (!confirm('Delete current frame?')) return;
+    
+    frames.splice(currentFrameIndex, 1);
+    currentFrameIndex = Math.max(0, currentFrameIndex - 1);
+    updateTimeline();
+    drawCurrentFrame();
 }
 
-async function shareToGallery() {
-    try {
-        const title = document.getElementById('artwork-title').value || 'Untitled Artwork';
-        
-        // Generate thumbnail
-        const thumbnail = generateThumbnail();
-        
-        const artworkData = {
-            title,
-            data: { pixels },
-            width: canvasWidth,
-            height: canvasHeight,
-            thumbnail,
-            is_public: true,
-            user_id: null // Anonymous
+function togglePlay() {
+    if (isPlaying) {
+        stopPlay();
+    } else {
+        startPlay();
+    }
+}
+
+function startPlay() {
+    if (frames.length === 1) return;
+    
+    isPlaying = true;
+    document.getElementById('play-btn').innerHTML = '<i class="fas fa-stop mr-1"></i>Stop';
+    
+    playInterval = setInterval(() => {
+        currentFrameIndex = (currentFrameIndex + 1) % frames.length;
+        drawCurrentFrame();
+    }, 100); // 10 FPS
+}
+
+function stopPlay() {
+    isPlaying = false;
+    clearInterval(playInterval);
+    document.getElementById('play-btn').innerHTML = '<i class="fas fa-play mr-1"></i>Play';
+    updateTimeline();
+}
+
+// Import functions
+function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+            importedImage = img;
+            document.getElementById('import-modal').classList.remove('hidden');
         };
-        
-        // Create new artwork
-        const { data, error } = await supabase
-            .from('artworks')
-            .insert([artworkData])
-            .select()
-            .single();
-        
-        if (error) throw error;
-        
-        artworkId = data.id;
-        
-        // Show share link
-        const shareUrl = `${window.location.origin}/view.html?id=${artworkId}`;
-        
-        const copyToClipboard = confirm(
-            `✅ Shared to gallery!\n\nShare link:\n${shareUrl}\n\nCopy link to clipboard?`
-        );
-        
-        if (copyToClipboard) {
-            navigator.clipboard.writeText(shareUrl).then(() => {
-                alert('Link copied to clipboard!');
-            });
-        }
-        
-        // Redirect to view page
-        setTimeout(() => {
-            window.location.href = `view.html?id=${artworkId}`;
-        }, 500);
-        
-    } catch (error) {
-        console.error('Error sharing artwork:', error);
-        alert('Failed to share artwork. Please try again.');
-    }
+        img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
 }
 
-function generateThumbnail() {
-    // Create a smaller canvas for thumbnail
-    const thumbCanvas = document.createElement('canvas');
-    thumbCanvas.width = canvasWidth;
-    thumbCanvas.height = canvasHeight;
-    const thumbCtx = thumbCanvas.getContext('2d');
+function confirmImport() {
+    const frameWidth = parseInt(document.getElementById('slice-width').value);
+    const frameHeight = parseInt(document.getElementById('slice-height').value);
     
-    // Draw pixels without grid
-    for (let y = 0; y < canvasHeight; y++) {
-        for (let x = 0; x < canvasWidth; x++) {
-            const index = y * canvasWidth + x;
-            thumbCtx.fillStyle = pixels[index];
-            thumbCtx.fillRect(x, y, 1, 1);
+    if (!importedImage) return;
+    
+    // Calculate how many frames we can extract
+    const cols = Math.floor(importedImage.width / frameWidth);
+    const rows = Math.floor(importedImage.height / frameHeight);
+    
+    if (cols === 0 || rows === 0) {
+        alert('Frame size is too large for the image!');
+        return;
+    }
+    
+    // Create temporary canvas to extract pixels
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    // Clear existing frames
+    frames = [];
+    canvasWidth = frameWidth;
+    canvasHeight = frameHeight;
+    
+    // Adjust pixel size
+    const maxSize = 512;
+    pixelSize = Math.floor(maxSize / Math.max(frameWidth, frameHeight));
+    
+    // Extract frames
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            tempCanvas.width = frameWidth;
+            tempCanvas.height = frameHeight;
+            
+            tempCtx.drawImage(
+                importedImage,
+                col * frameWidth, row * frameHeight, frameWidth, frameHeight,
+                0, 0, frameWidth, frameHeight
+            );
+            
+            // Extract pixel data
+            const imageData = tempCtx.getImageData(0, 0, frameWidth, frameHeight);
+            const frame = [];
+            
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                const r = imageData.data[i];
+                const g = imageData.data[i + 1];
+                const b = imageData.data[i + 2];
+                const a = imageData.data[i + 3];
+                
+                if (a < 128) {
+                    frame.push('#FFFFFF');
+                } else {
+                    frame.push(rgbToHex(r, g, b));
+                }
+            }
+            
+            frames.push(frame);
         }
     }
     
-    return thumbCanvas.toDataURL('image/png');
+    currentFrameIndex = 0;
+    setupCanvas();
+    updateTimeline();
+    drawCurrentFrame();
+    cancelImport();
 }
 
-function exportArtwork() {
-    const link = document.createElement('a');
-    link.download = `${document.getElementById('artwork-title').value || 'artwork'}.png`;
-    
-    // Create export canvas
+function cancelImport() {
+    document.getElementById('import-modal').classList.add('hidden');
+    importedImage = null;
+    document.getElementById('file-input').value = '';
+}
+
+function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map(x => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+    }).join('');
+}
+
+// Export functions
+function exportPNG() {
     const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = canvasWidth;
+    exportCanvas.width = canvasWidth * frames.length;
     exportCanvas.height = canvasHeight;
     const exportCtx = exportCanvas.getContext('2d');
     
-    // Draw pixels
-    for (let y = 0; y < canvasHeight; y++) {
-        for (let x = 0; x < canvasWidth; x++) {
-            const index = y * canvasWidth + x;
-            exportCtx.fillStyle = pixels[index];
-            exportCtx.fillRect(x, y, 1, 1);
+    frames.forEach((frame, frameIndex) => {
+        for (let y = 0; y < canvasHeight; y++) {
+            for (let x = 0; x < canvasWidth; x++) {
+                const index = y * canvasWidth + x;
+                exportCtx.fillStyle = frame[index];
+                exportCtx.fillRect(frameIndex * canvasWidth + x, y, 1, 1);
+            }
         }
-    }
+    });
     
+    const link = document.createElement('a');
+    link.download = 'spritesheet.png';
     link.href = exportCanvas.toDataURL('image/png');
     link.click();
 }
 
-async function loadArtwork(id, isRemix = false) {
-    try {
-        const { data, error } = await supabase
-            .from('artworks')
-            .select('*')
-            .eq('id', id)
-            .single();
+function exportGIF() {
+    if (frames.length === 1) {
+        alert('Add more frames to create an animated GIF!');
+        return;
+    }
+    
+    const gif = new GIF({
+        workers: 2,
+        quality: 10,
+        width: canvasWidth,
+        height: canvasHeight
+    });
+    
+    frames.forEach(frame => {
+        const frameCanvas = document.createElement('canvas');
+        frameCanvas.width = canvasWidth;
+        frameCanvas.height = canvasHeight;
+        const frameCtx = frameCanvas.getContext('2d');
         
-        if (error) throw error;
-        
-        // Load artwork data
-        document.getElementById('artwork-title').value = isRemix ? `Remix of ${data.title}` : data.title;
-        canvasWidth = data.width;
-        canvasHeight = data.height;
-        pixels = data.data.pixels;
-        
-        // Adjust pixel size
-        const maxSize = 512;
-        pixelSize = Math.floor(maxSize / Math.max(canvasWidth, canvasHeight));
-        
-        canvas.width = canvasWidth * pixelSize;
-        canvas.height = canvasHeight * pixelSize;
-        
-        drawCanvas();
-        
-        if (isRemix) {
-            artworkId = null; // Clear artworkId so it creates new artwork
+        for (let y = 0; y < canvasHeight; y++) {
+            for (let x = 0; x < canvasWidth; x++) {
+                const index = y * canvasWidth + x;
+                frameCtx.fillStyle = frame[index];
+                frameCtx.fillRect(x, y, 1, 1);
+            }
         }
         
-    } catch (error) {
-        console.error('Error loading artwork:', error);
-        alert('Failed to load artwork');
-    }
+        gif.addFrame(frameCanvas, { delay: 100 });
+    });
+    
+    gif.on('finished', (blob) => {
+        const link = document.createElement('a');
+        link.download = 'animation.gif';
+        link.href = URL.createObjectURL(blob);
+        link.click();
+    });
+    
+    gif.render();
 }
 
-// Initialize editor
+// Initialize
 document.addEventListener('DOMContentLoaded', init);

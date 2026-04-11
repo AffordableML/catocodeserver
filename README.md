@@ -1,141 +1,196 @@
-# CatoArt - Pixel Art Community Platform
+# 🎨 CatoArt - Pixel Art & Animation Editor
 
-A modern pixel art editor and community platform built with static HTML and Supabase. Deploy anywhere - Cloudflare Pages, GitHub Pages, Netlify, or any static host!
+A powerful, pure client-side pixel art and animation editor. Create sprites, animate characters, import spritesheets, and export as PNG or GIF—all in your browser!
 
 ## ✨ Features
 
-- 🎨 **Pixel Art Editor** - Draw and animate pixel art
-- 👥 **User Accounts** - Sign up with email
-- 🖼️ **Community Gallery** - Share and discover artwork
-- ❤️ **Like System** - Like your favorite pieces
-- 🔄 **Remix** - Build on others' work
-- 📱 **Fully Responsive** - Works on all devices
-- ⚡ **Static Site** - Deploy anywhere, no server needed!
+- 🎨 **Pixel Art Tools** - Pen, eraser, fill, and eyedropper
+- 🎬 **Multi-Frame Animation** - Create smooth animations with timeline
+- 👻 **Onion Skinning** - See previous frame while drawing
+- 📥 **Import & Slice** - Load images and slice into frames
+- 📤 **Export** - Save as PNG spritesheet or animated GIF
+- 🚀 **100% Client-Side** - No server, no database, works offline
+- 📱 **Responsive** - Works on desktop and mobile
 
 ## 🚀 Quick Start
 
-### 1. Setup Supabase
+### Deploy to Cloudflare Pages
 
-Follow the detailed instructions in [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md)
-
-Quick summary:
-1. Run SQL commands in Supabase SQL Editor
-2. Get your anon key from Supabase Dashboard
-3. Update `static/js/config.js` with your anon key
-
-### 2. Deploy
-
-**Cloudflare Pages:**
+1. **Push to GitHub:**
 ```bash
-git push origin main
-# Connect repo in Cloudflare Pages dashboard
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/YOUR-USERNAME/catoart.git
+git push -u origin main
 ```
 
-**GitHub Pages:**
-```bash
-git push origin main
-# Enable Pages in repo settings
-```
+2. **Deploy:**
+   - Go to https://dash.cloudflare.com
+   - Workers & Pages → Create → Pages → Connect to Git
+   - Select your repo
+   - Build command: (leave empty)
+   - Build output: `/`
+   - Deploy!
 
-**Local Development:**
+3. **Done!** Your site is live at `https://catoart.pages.dev`
+
+### Local Development
+
 ```bash
-# Use any static server
+# Python
 python -m http.server 8000
-# or
+
+# Or use any static server
 npx serve
 ```
+
+Visit: http://localhost:8000
+
+## 🎮 How to Use
+
+### Drawing
+1. Select a tool (Pen, Eraser, Fill, Eyedropper)
+2. Pick a color from palette or color picker
+3. Draw on the canvas!
+
+### Animation
+1. Click "Add Frame" to create new frames
+2. Enable "Show Previous Frame" for onion skinning
+3. Draw frame by frame
+4. Click "Play" to preview
+5. Export as GIF
+
+### Import Spritesheet
+1. Click "Import" button
+2. Select an image file
+3. Set frame width and height
+4. Slice into frames automatically
+
+### Export
+- **PNG** - Horizontal spritesheet of all frames
+- **GIF** - Animated GIF (requires 2+ frames)
 
 ## 📁 Project Structure
 
 ```
 CatoArt/
-├── index.html           # Homepage with gallery preview
-├── login.html           # Login page
-├── register.html        # Sign up page
-├── dashboard.html       # User dashboard (coming)
-├── gallery.html         # Full gallery (coming)
-├── editor.html          # Pixel art editor (coming)
-├── view.html            # View artwork (coming)
+├── index.html              # Homepage
+├── editor.html             # Pixel art editor
 ├── static/
 │   ├── css/
-│   │   └── style.css    # Neo-brutalist styles
+│   │   └── style.css      # Neo-brutalist styles
 │   └── js/
-│       ├── config.js    # Supabase config
-│       ├── auth.js      # Auth functions
-│       └── main.js      # Homepage logic
-└── SETUP_INSTRUCTIONS.md
+│       └── editor.js      # Editor logic
+├── SETUP_INSTRUCTIONS.md  # Detailed setup guide
+└── README.md
 ```
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Pure HTML, CSS (Tailwind), Vanilla JavaScript
-- **Backend**: Supabase (PostgreSQL + Auth + Storage)
-- **Hosting**: Static (Cloudflare Pages, GitHub Pages, etc.)
-- **No Build Step**: Deploy directly!
+- **HTML5 Canvas** - For pixel-perfect rendering
+- **Vanilla JavaScript** - No frameworks, pure JS
+- **Tailwind CSS** - Utility-first styling
+- **GIF.js** - Animated GIF export
+- **Cloudflare Pages** - Free hosting
 
 ## 🎨 Design
 
 Neo-brutalist design with:
 - Bold borders and shadows
-- Bright color palette
+- Bright color palette (#20ffad, #ff6b6b, #ffc900)
 - Playful animations
 - Dotted background pattern
 - Nunito font family
 
-## 🔒 Security
+## 💡 Use Cases
 
-- Row Level Security (RLS) enabled on all tables
-- Users can only modify their own data
-- Public artworks visible to all
-- Private artworks only visible to owner
+- **Game Development** - Create sprites and animations
+- **Pixel Art** - Draw retro-style artwork
+- **NFTs** - Create pixel art collections
+- **Social Media** - Animated profile pictures
+- **Learning** - Practice pixel art
+- **Fun** - Just create!
 
-## 📊 Database Schema
+## 🔧 Customization
 
-### Tables
-- `users` - User profiles
-- `artworks` - Pixel art creations
-- `likes` - Artwork likes
-- `remixes` - Remix tracking
+### Add Canvas Sizes
 
-See [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md) for full schema.
+Edit `editor.html`:
+```html
+<button onclick="resizeCanvas(128, 128)">128x128</button>
+```
 
-## 🤝 Contributing
+### Change Color Palette
 
-This is a personal project, but feel free to fork and customize!
+Edit `static/js/editor.js`:
+```javascript
+const defaultPalette = [
+    '#000000', '#FFFFFF', '#FF0000', // Your colors
+];
+```
+
+### Add Keyboard Shortcuts
+
+Edit `static/js/editor.js`:
+```javascript
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'p') setTool('pen');
+    if (e.key === 'e') setTool('eraser');
+});
+```
+
+## 🔄 Updating
+
+```bash
+git add .
+git commit -m "Update"
+git push
+```
+
+Cloudflare auto-deploys in 1-2 minutes!
+
+## 💰 Cost
+
+**FREE!** No costs at all:
+- ✅ Cloudflare Pages: Free hosting
+- ✅ No database costs
+- ✅ No API costs
+- ✅ No server costs
+
+## 🌐 Browser Support
+
+- ✅ Chrome/Edge (latest)
+- ✅ Firefox (latest)
+- ✅ Safari (latest)
+- ✅ Mobile browsers
+- ⚠️ IE11 not supported
 
 ## 📝 License
 
-MIT License - feel free to use for your own projects!
+MIT License - Use freely for any project!
 
 ## 🎯 Roadmap
 
-- [x] User authentication
-- [x] Homepage with gallery
-- [x] Login/Register pages
-- [x] Dashboard page
-- [x] Full gallery page
 - [x] Pixel art editor
-- [x] View artwork page
-- [x] Like functionality
-- [x] Remix functionality
-- [x] Thumbnail generation
-- [x] Export as PNG/GIF
-
-**All features complete!** 🎉
-
-## 💡 Why Static?
-
-- ✅ Deploy anywhere
-- ✅ No server costs
-- ✅ Instant global CDN
-- ✅ Simple to maintain
-- ✅ Scales automatically
-- ✅ Fast performance
+- [x] Multi-frame animation
+- [x] Onion skinning
+- [x] Import images
+- [x] Slice spritesheets
+- [x] Export PNG
+- [x] Export GIF
+- [ ] Keyboard shortcuts
+- [ ] Undo/Redo
+- [ ] Layers
+- [ ] Custom brushes
 
 ## 🆘 Support
 
-Check [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md) for detailed setup help and troubleshooting.
+See [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md) for detailed help and troubleshooting.
 
 ---
 
-Made with ❤️ for pixel artists
+**Made with ❤️ for pixel artists**
+
+🎨 **Start creating amazing pixel art today!**
+
