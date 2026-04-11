@@ -149,7 +149,7 @@ python3 -m http.server 8000
 
 Visit: **http://localhost:8000**
 
-### Option 2: Using the Provided Script
+### Option 2: Using the Provided Script (LEGACY, STILL IN DEVELOPMENT)
 
 ```bash
 # Make the script executable (first time only)
